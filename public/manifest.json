@@ -1,0 +1,19 @@
+{
+  "name": "PURIT",
+  "short_name": "PURIT",
+  "description": "Sales, Inventory & Customer Intelligence business management web application for hygiene products.",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "background_color": "#0D6E6E",
+  "theme_color": "#0D6E6E",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

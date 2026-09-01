@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="puritGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0D6E6E" />
+      <stop offset="100%" stop-color="#042F2E" />
+    </linearGradient>
+    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#14B8A6" />
+      <stop offset="100%" stop-color="#0D9488" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="128" fill="url(#puritGrad)"/>
+  <circle cx="256" cy="256" r="190" fill="#FFFFFF" fill-opacity="0.08" />
+  
+  <!-- Droplet & Shield emblem -->
+  <path d="M256 96 C256 96 160 216 160 304 C160 357 203 400 256 400 C309 400 352 357 352 304 C352 216 256 96 256 96 Z" fill="url(#shieldGrad)" />
+  <path d="M256 160 C256 160 196 244 196 304 C196 337 223 364 256 364 C289 364 316 337 316 304 C316 244 256 160 256 160 Z" fill="#FFFFFF" fill-opacity="0.95" />
+  
+  <!-- Stylized P Letter -->
+  <path d="M236 240 L270 240 C283 240 294 251 294 264 C294 277 283 288 270 288 L236 288 Z M216 220 L270 220 C294 220 314 240 314 264 C314 288 294 308 270 308 L236 308 L236 348 L216 348 Z" fill="#0D6E6E"/>
+</svg>

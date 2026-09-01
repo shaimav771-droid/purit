@@ -1,0 +1,6 @@
+{
+  "name": "PURIT",
+  "description": "Sales, Inventory & Customer Intelligence business management web application for hygiene products.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,304 @@
+{
+  "entities": {
+    "Customer": {
+      "title": "Customer",
+      "description": "A restaurant or business client",
+      "type": "object",
+      "properties": {
+        "restaurantName": { "type": "string", "maxLength": 200 },
+        "legalName": { "type": "string", "maxLength": 200 },
+        "contactPerson": { "type": "string", "maxLength": 100 },
+        "phone": { "type": "string", "maxLength": 30 },
+        "address": { "type": "string", "maxLength": 500 },
+        "billingAddress": { "type": "string", "maxLength": 500 },
+        "state": { "type": "string", "maxLength": 100 },
+        "stateCode": { "type": "string", "maxLength": 10 },
+        "gstEnabled": { "type": "boolean" },
+        "gstin": { "type": "string", "maxLength": 50 },
+        "email": { "type": "string", "maxLength": 100 },
+        "notes": { "type": "string", "maxLength": 1000 },
+        "status": { "type": "string", "enum": ["active", "due_soon", "overdue", "lost"] },
+        "lostReason": { "type": "string", "maxLength": 100 },
+        "lostNotes": { "type": "string", "maxLength": 500 },
+        "totalInvoicedSales": { "type": "number" },
+        "totalPaid": { "type": "number" },
+        "totalPending": { "type": "number" },
+        "totalProfit": { "type": "number" },
+        "totalHandwashPurchased": { "type": "number" },
+        "totalTissuePurchased": { "type": "number" },
+        "dispensersCount": { "type": "number" },
+        "latestPurchaseDate": { "type": "string", "maxLength": 50 },
+        "createdAt": { "type": "string", "maxLength": 50 },
+        "updatedAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["restaurantName", "phone", "address", "gstEnabled", "status"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Hygiene catalog product",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 200 },
+        "sku": { "type": "string", "maxLength": 50 },
+        "category": { "type": "string", "enum": ["handwash", "tissue", "dispenser", "other"] },
+        "unit": { "type": "string", "maxLength": 20 },
+        "currentStock": { "type": "number" },
+        "reorderLevel": { "type": "number" },
+        "makingCost": { "type": "number" },
+        "defaultSellingPrice": { "type": "number" },
+        "supplier": { "type": "string", "maxLength": 200 },
+        "description": { "type": "string", "maxLength": 500 },
+        "imageUrl": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string", "maxLength": 50 },
+        "updatedAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["name", "category", "unit", "currentStock", "reorderLevel", "makingCost", "defaultSellingPrice"]
+    },
+    "InventoryTransaction": {
+      "title": "InventoryTransaction",
+      "description": "Stock movement record",
+      "type": "object",
+      "properties": {
+        "productId": { "type": "string", "maxLength": 100 },
+        "productName": { "type": "string", "maxLength": 200 },
+        "type": { "type": "string", "enum": ["purchase", "sale", "damaged", "adjustment", "dispenser_install"] },
+        "quantityChange": { "type": "number" },
+        "unitCost": { "type": "number" },
+        "previousStock": { "type": "number" },
+        "newStock": { "type": "number" },
+        "referenceId": { "type": "string", "maxLength": 100 },
+        "notes": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["productId", "productName", "type", "quantityChange", "unitCost", "previousStock", "newStock", "createdAt"]
+    },
+    "Sale": {
+      "title": "Sale",
+      "description": "Sales invoice transaction",
+      "type": "object",
+      "properties": {
+        "invoiceNumber": { "type": "string", "maxLength": 50 },
+        "customerId": { "type": "string", "maxLength": 100 },
+        "customerName": { "type": "string", "maxLength": 200 },
+        "customerPhone": { "type": "string", "maxLength": 30 },
+        "customerAddress": { "type": "string", "maxLength": 500 },
+        "customerGstin": { "type": "string", "maxLength": 50 },
+        "gstEnabled": { "type": "boolean" },
+        "saleDate": { "type": "string", "maxLength": 50 },
+        "subtotal": { "type": "number" },
+        "discount": { "type": "number" },
+        "gstRate": { "type": "number" },
+        "gstAmount": { "type": "number" },
+        "invoiceTotal": { "type": "number" },
+        "oldDue": { "type": "number" },
+        "totalDueWithOldDue": { "type": "number" },
+        "paidAmount": { "type": "number" },
+        "pendingAmount": { "type": "number" },
+        "paymentStatus": { "type": "string", "enum": ["paid", "partially_paid", "unpaid", "cancelled"] },
+        "grossProfit": { "type": "number" },
+        "notes": { "type": "string", "maxLength": 500 },
+        "isDispenserOnly": { "type": "boolean" },
+        "createdAt": { "type": "string", "maxLength": 50 },
+        "updatedAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["invoiceNumber", "customerId", "customerName", "saleDate", "subtotal", "invoiceTotal", "paidAmount", "pendingAmount", "paymentStatus"]
+    },
+    "SaleItem": {
+      "title": "SaleItem",
+      "description": "Line item inside a sale",
+      "type": "object",
+      "properties": {
+        "saleId": { "type": "string", "maxLength": 100 },
+        "productId": { "type": "string", "maxLength": 100 },
+        "productName": { "type": "string", "maxLength": 200 },
+        "category": { "type": "string", "maxLength": 50 },
+        "quantity": { "type": "number" },
+        "unit": { "type": "string", "maxLength": 20 },
+        "unitCost": { "type": "number" },
+        "unitSellingPrice": { "type": "number" },
+        "discount": { "type": "number" },
+        "totalBeforeGst": { "type": "number" },
+        "lineProfit": { "type": "number" },
+        "createdAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["saleId", "productId", "productName", "quantity", "unitSellingPrice", "totalBeforeGst"]
+    },
+    "Payment": {
+      "title": "Payment",
+      "description": "Payment receipt toward an invoice",
+      "type": "object",
+      "properties": {
+        "saleId": { "type": "string", "maxLength": 100 },
+        "invoiceNumber": { "type": "string", "maxLength": 50 },
+        "customerId": { "type": "string", "maxLength": 100 },
+        "customerName": { "type": "string", "maxLength": 200 },
+        "amount": { "type": "number" },
+        "paymentDate": { "type": "string", "maxLength": 50 },
+        "paymentMethod": { "type": "string", "maxLength": 50 },
+        "referenceNumber": { "type": "string", "maxLength": 100 },
+        "notes": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["saleId", "invoiceNumber", "customerId", "amount", "paymentDate", "paymentMethod", "createdAt"]
+    },
+    "Expense": {
+      "title": "Expense",
+      "description": "Operating expenditure",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "maxLength": 200 },
+        "category": { "type": "string", "maxLength": 100 },
+        "amount": { "type": "number" },
+        "date": { "type": "string", "maxLength": 50 },
+        "paymentMethod": { "type": "string", "maxLength": 50 },
+        "description": { "type": "string", "maxLength": 500 },
+        "receiptUrl": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["title", "category", "amount", "date", "paymentMethod", "createdAt"]
+    },
+    "Dispenser": {
+      "title": "Dispenser",
+      "description": "Dispenser installed at restaurant",
+      "type": "object",
+      "properties": {
+        "customerId": { "type": "string", "maxLength": 100 },
+        "customerName": { "type": "string", "maxLength": 200 },
+        "model": { "type": "string", "maxLength": 100 },
+        "installedQuantity": { "type": "number" },
+        "installationDate": { "type": "string", "maxLength": 50 },
+        "unitCost": { "type": "number" },
+        "totalCost": { "type": "number" },
+        "notes": { "type": "string", "maxLength": 500 },
+        "status": { "type": "string", "enum": ["active", "replaced", "removed"] },
+        "createdAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["customerId", "customerName", "model", "installedQuantity", "installationDate", "totalCost", "status", "createdAt"]
+    },
+    "DispenserReplacement": {
+      "title": "DispenserReplacement",
+      "description": "Dispenser repair or replacement event",
+      "type": "object",
+      "properties": {
+        "dispenserId": { "type": "string", "maxLength": 100 },
+        "customerId": { "type": "string", "maxLength": 100 },
+        "customerName": { "type": "string", "maxLength": 200 },
+        "replacementDate": { "type": "string", "maxLength": 50 },
+        "model": { "type": "string", "maxLength": 100 },
+        "quantity": { "type": "number" },
+        "reason": { "type": "string", "maxLength": 100 },
+        "unitCost": { "type": "number" },
+        "notes": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["customerId", "customerName", "replacementDate", "model", "quantity", "reason", "createdAt"]
+    },
+    "CustomerConsumption": {
+      "title": "CustomerConsumption",
+      "description": "Rolling 2-purchase repurchase intelligence",
+      "type": "object",
+      "properties": {
+        "customerId": { "type": "string", "maxLength": 100 },
+        "productCategory": { "type": "string", "enum": ["handwash", "tissue"] },
+        "latestPurchaseDate": { "type": "string", "maxLength": 50 },
+        "latestQuantity": { "type": "number" },
+        "previousPurchaseDate": { "type": "string", "maxLength": 50 },
+        "previousQuantity": { "type": "number" },
+        "elapsedDays": { "type": "number" },
+        "consumptionRatePerDay": { "type": "number" },
+        "consumptionRateDisplay": { "type": "string", "maxLength": 100 },
+        "estimatedDurationDays": { "type": "number" },
+        "expectedNextPurchaseDate": { "type": "string", "maxLength": 50 },
+        "status": { "type": "string", "enum": ["insufficient_data", "healthy", "approaching", "overdue"] },
+        "daysRemaining": { "type": "number" },
+        "daysOverdue": { "type": "number" },
+        "updatedAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["customerId", "productCategory", "status", "updatedAt"]
+    },
+    "BusinessSettings": {
+      "title": "BusinessSettings",
+      "description": "PURIT configuration and profile",
+      "type": "object",
+      "properties": {
+        "businessName": { "type": "string", "maxLength": 200 },
+        "logoUrl": { "type": "string", "maxLength": 500 },
+        "address": { "type": "string", "maxLength": 500 },
+        "phone": { "type": "string", "maxLength": 50 },
+        "email": { "type": "string", "maxLength": 100 },
+        "gstin": { "type": "string", "maxLength": 50 },
+        "gstRate": { "type": "number" },
+        "invoicePrefix": { "type": "string", "maxLength": 20 },
+        "invoiceNextNumber": { "type": "number" },
+        "invoiceFooter": { "type": "string", "maxLength": 500 },
+        "currency": { "type": "string", "maxLength": 10 },
+        "updatedAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["businessName", "gstRate", "invoicePrefix", "invoiceNextNumber", "currency"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "System audit trail",
+      "type": "object",
+      "properties": {
+        "action": { "type": "string", "maxLength": 100 },
+        "entityType": { "type": "string", "maxLength": 100 },
+        "entityId": { "type": "string", "maxLength": 100 },
+        "details": { "type": "string", "maxLength": 1000 },
+        "timestamp": { "type": "string", "maxLength": 50 },
+        "userEmail": { "type": "string", "maxLength": 100 }
+      },
+      "required": ["action", "entityType", "entityId", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/customers/{customerId}": {
+      "schema": { "$ref": "#/entities/Customer" },
+      "description": "Stores customer restaurant records"
+    },
+    "/products/{productId}": {
+      "schema": { "$ref": "#/entities/Product" },
+      "description": "Stores hygiene products catalog and stock"
+    },
+    "/inventoryTransactions/{transactionId}": {
+      "schema": { "$ref": "#/entities/InventoryTransaction" },
+      "description": "Audit records for all stock movements"
+    },
+    "/sales/{saleId}": {
+      "schema": { "$ref": "#/entities/Sale" },
+      "description": "Sales invoices"
+    },
+    "/saleItems/{itemId}": {
+      "schema": { "$ref": "#/entities/SaleItem" },
+      "description": "Individual product line items in sales"
+    },
+    "/payments/{paymentId}": {
+      "schema": { "$ref": "#/entities/Payment" },
+      "description": "Payment transactions towards sales"
+    },
+    "/expenses/{expenseId}": {
+      "schema": { "$ref": "#/entities/Expense" },
+      "description": "Business expense records"
+    },
+    "/dispensers/{dispenserId}": {
+      "schema": { "$ref": "#/entities/Dispenser" },
+      "description": "Installed dispensers at client restaurants"
+    },
+    "/dispenserReplacements/{replacementId}": {
+      "schema": { "$ref": "#/entities/DispenserReplacement" },
+      "description": "Replacements and maintenance history for dispensers"
+    },
+    "/customerConsumption/{consumptionId}": {
+      "schema": { "$ref": "#/entities/CustomerConsumption" },
+      "description": "Repurchase and consumption rate cache for Handwash and Tissue"
+    },
+    "/businessSettings/{settingId}": {
+      "schema": { "$ref": "#/entities/BusinessSettings" },
+      "description": "Business configuration and profile"
+    },
+    "/auditLogs/{logId}": {
+      "schema": { "$ref": "#/entities/AuditLog" },
+      "description": "System operation audit logs"
+    }
+  }
+}
