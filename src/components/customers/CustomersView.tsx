@@ -34,16 +34,6 @@ export const CustomersView: React.FC = () => {
   const [activeFilterTab, setActiveFilterTab] = useState<'all' | 'active' | 'lost'>('all');
   const [sortBy, setSortBy] = useState<'latest_date' | 'highest_sales' | 'highest_pending'>('latest_date');
 
-  // If a specific customer is selected, show their full detail profile
-  if (selectedCustomerId) {
-    return (
-      <CustomerDetailView
-        customerId={selectedCustomerId}
-        onBack={() => setSelectedCustomerId(null)}
-      />
-    );
-  }
-
   // Filter and sort customer records
   const filteredCustomers = useMemo(() => {
     let result = [...customers];
@@ -85,6 +75,16 @@ export const CustomersView: React.FC = () => {
 
     return result;
   }, [customers, searchQuery, activeFilterTab, sortBy]);
+
+  // If a specific customer is selected, show their full detail profile
+  if (selectedCustomerId) {
+    return (
+      <CustomerDetailView
+        customerId={selectedCustomerId}
+        onBack={() => setSelectedCustomerId(null)}
+      />
+    );
+  }
 
   const handleSelectCustomer = (customer: any) => {
     if (!customer) return;

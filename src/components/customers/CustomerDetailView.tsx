@@ -104,27 +104,6 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
     return null;
   }, [customers, targetCustomerId, selectedCustomerId]);
 
-  if (!customer) {
-    if (isLoading) {
-      return (
-        <div className="p-12 text-center bg-white rounded-2xl border border-slate-200 shadow-2xs">
-          <div className="w-8 h-8 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-slate-500 text-xs font-semibold">Loading customer profile...</p>
-        </div>
-      );
-    }
-
-    return (
-      <div className="p-8 text-center bg-white rounded-2xl border border-slate-200">
-        <p className="text-slate-500 font-bold mb-1">Customer record not found.</p>
-        <p className="text-slate-400 text-xs mb-4">The requested customer record could not be located in your directory.</p>
-        <button onClick={onBack} className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors">
-          ← Back to Customer List
-        </button>
-      </div>
-    );
-  }
-
   // Customer sales (matched by ID, _id, or restaurant/legal name)
   const customerSales = useMemo(() => {
     if (!customer) return [];
@@ -183,7 +162,7 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
     if (validSales.length > 0) {
       return validSales.reduce((sum, s) => sum + (s.invoiceTotal || 0), 0);
     }
-    return customer.totalInvoicedSales || 0;
+    return customer?.totalInvoicedSales || 0;
   }, [customerSales, customer]);
 
   const totalReceivedVal = useMemo(() => {
@@ -191,7 +170,7 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
     if (validSales.length > 0) {
       return validSales.reduce((sum, s) => sum + (s.paidAmount || 0), 0);
     }
-    return customer.totalPaid || 0;
+    return customer?.totalPaid || 0;
   }, [customerSales, customer]);
 
   const totalPendingVal = useMemo(() => {
@@ -199,7 +178,7 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
     if (validSales.length > 0) {
       return validSales.reduce((sum, s) => sum + (s.pendingAmount || 0), 0);
     }
-    return customer.totalPending || 0;
+    return customer?.totalPending || 0;
   }, [customerSales, customer]);
 
   // Total Fitting Cost calculation
@@ -214,6 +193,27 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
     }, 0);
     return dispensersCost + replacementsCost;
   }, [customerDispensers, customerReplacements]);
+
+  if (!customer) {
+    if (isLoading) {
+      return (
+        <div className="p-12 text-center bg-white rounded-2xl border border-slate-200 shadow-2xs">
+          <div className="w-8 h-8 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-slate-500 text-xs font-semibold">Loading customer profile...</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="p-8 text-center bg-white rounded-2xl border border-slate-200">
+        <p className="text-slate-500 font-bold mb-1">Customer record not found.</p>
+        <p className="text-slate-400 text-xs mb-4">The requested customer record could not be located in your directory.</p>
+        <button onClick={onBack} className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors">
+          ← Back to Customer List
+        </button>
+      </div>
+    );
+  }
 
   const handleToggleExpandSale = (saleId: string) => {
     setExpandedSaleIds(prev => {
@@ -326,15 +326,15 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
       <div className="bg-white border border-slate-100/90 rounded-3xl p-5 sm:p-6 shadow-xs space-y-5">
 
         {/* Top Row: Avatar, Info, Active Badge, Edit Button */}
-        <div className="flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
-          <div className="flex items-center gap-4">
+        <div className="flex items-start justify-between gap-3 flex-wrap sm:flex-nowrap">
+          <div className="flex items-start gap-4">
             {/* Avatar Initials */}
             <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-[#dcfce7] text-[#059669] font-black text-xl sm:text-2xl flex items-center justify-center shrink-0 border border-emerald-200/50">
               {getInitials(customer.restaurantName)}
             </div>
 
             {/* Name & Subtitle/Phone */}
-            <div>
+            <div className="pt-0.5">
               <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight capitalize">
                 {customer.restaurantName}
               </h1>
@@ -345,7 +345,7 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
           </div>
 
           {/* Badge & Edit Button */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 pt-0.5">
             {/* ACTIVE Badge */}
             <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 ${
               customer.status === 'active' || !customer.status
