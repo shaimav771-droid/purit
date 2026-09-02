@@ -203,7 +203,7 @@ type TabType = typeof VALID_TABS[number];
 
 function getInitialTab(): TabType {
   if (typeof window !== 'undefined') {
-    const hash = window.location.hash.replace(/^#\/?/, '').toLowerCase() as TabType;
+    const hash = window.location.hash.replace(/^#\/?/, '').split('?')[0].toLowerCase() as TabType;
     if (VALID_TABS.includes(hash)) {
       return hash;
     }
@@ -235,29 +235,83 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Navigation & UI state - Persisted across page refreshes
   const [activeTab, setActiveTabState] = useState<TabType>(getInitialTab);
 
+  const [selectedCustomerId, setSelectedCustomerIdState] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      const hashStr = window.location.hash;
+      if (hashStr.includes('id=')) {
+        const match = hashStr.match(/id=([^&]+)/);
+        if (match && match[1]) return decodeURIComponent(match[1]);
+      }
+      const searchStr = window.location.search;
+      if (searchStr.includes('id=')) {
+        const match = searchStr.match(/id=([^&]+)/);
+        if (match && match[1]) return decodeURIComponent(match[1]);
+      }
+      return localStorage.getItem('purit_selected_customer_id') || null;
+    }
+    return null;
+  });
+
   const setActiveTab = useCallback((tab: TabType) => {
     setActiveTabState(tab);
     if (typeof window !== 'undefined') {
       try {
         localStorage.setItem('purit_active_tab', tab);
-        if (window.location.hash !== `#${tab}`) {
+        const currentCustId = localStorage.getItem('purit_selected_customer_id');
+        if (tab === 'customers' && currentCustId) {
+          window.history.replaceState(null, '', `#customers?id=${encodeURIComponent(currentCustId)}`);
+        } else {
           window.history.replaceState(null, '', `#${tab}`);
         }
       } catch {}
     }
   }, []);
 
-  // Synchronize hash changes and maintain active tab on refresh
+  const setSelectedCustomerId = useCallback((id: string | null) => {
+    setSelectedCustomerIdState(id);
+    if (typeof window !== 'undefined') {
+      try {
+        if (id) {
+          localStorage.setItem('purit_selected_customer_id', id);
+          setActiveTabState('customers');
+          localStorage.setItem('purit_active_tab', 'customers');
+          const targetHash = `#customers?id=${encodeURIComponent(id)}`;
+          if (window.location.hash !== targetHash) {
+            window.location.hash = targetHash;
+          }
+        } else {
+          localStorage.removeItem('purit_selected_customer_id');
+          if (window.location.hash.includes('id=')) {
+            window.location.hash = 'customers';
+          }
+        }
+      } catch {}
+    }
+  }, []);
+
+  // Synchronize hash changes and maintain active tab & selected customer on refresh
   useEffect(() => {
     const handleHashChange = () => {
-      const hash = window.location.hash.replace(/^#\/?/, '').toLowerCase() as TabType;
-      if (VALID_TABS.includes(hash)) {
+      const hashStr = window.location.hash.replace(/^#\/?/, '');
+      const tabPart = hashStr.split('?')[0].toLowerCase() as TabType;
+
+      const match = hashStr.match(/id=([^&]+)/);
+      if (match && match[1]) {
+        const custId = decodeURIComponent(match[1]);
+        setSelectedCustomerIdState(custId);
+        try { localStorage.setItem('purit_selected_customer_id', custId); } catch {}
+      } else {
+        setSelectedCustomerIdState(null);
+        try { localStorage.removeItem('purit_selected_customer_id'); } catch {}
+      }
+
+      if (VALID_TABS.includes(tabPart)) {
         setActiveTabState(prev => {
-          if (prev !== hash) {
+          if (prev !== tabPart) {
             try {
-              localStorage.setItem('purit_active_tab', hash);
+              localStorage.setItem('purit_active_tab', tabPart);
             } catch {}
-            return hash;
+            return tabPart;
           }
           return prev;
         });
@@ -266,30 +320,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     window.addEventListener('hashchange', handleHashChange);
     if (typeof window !== 'undefined' && !window.location.hash) {
-      window.history.replaceState(null, '', `#${activeTab}`);
+      const currentCustId = localStorage.getItem('purit_selected_customer_id');
+      if (activeTab === 'customers' && currentCustId) {
+        window.history.replaceState(null, '', `#customers?id=${encodeURIComponent(currentCustId)}`);
+      } else {
+        window.history.replaceState(null, '', `#${activeTab}`);
+      }
     }
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, [activeTab]);
-
-  const [selectedCustomerId, setSelectedCustomerIdState] = useState<string | null>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('purit_selected_customer_id') || null;
-    }
-    return null;
-  });
-
-  const setSelectedCustomerId = useCallback((id: string | null) => {
-    setSelectedCustomerIdState(id);
-    if (typeof window !== 'undefined') {
-      try {
-        if (id) {
-          localStorage.setItem('purit_selected_customer_id', id);
-        } else {
-          localStorage.removeItem('purit_selected_customer_id');
-        }
-      } catch {}
-    }
-  }, []);
   const [dateFilter, setDateFilter] = useState<DateFilterType>('this_month');
   const [customDateRange, setCustomDateRange] = useState<DateRange>({
     startDate: getTodayString(),

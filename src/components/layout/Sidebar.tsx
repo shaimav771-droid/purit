@@ -128,6 +128,9 @@ export const Sidebar: React.FC = () => {
               key={item.id}
               id={`sidebar-nav-${item.id}`}
               onClick={() => {
+                if (item.id === 'customers' && activeTab === 'customers') {
+                  setSelectedCustomerId(null);
+                }
                 setActiveTab(item.id as any);
                 if (item.id !== 'customers') {
                   setSelectedCustomerId(null);

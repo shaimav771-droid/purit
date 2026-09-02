@@ -47,6 +47,9 @@ export const BottomNav: React.FC = () => {
   const isMoreTabActive = ['expenses', 'dashboard', 'reports', 'settings'].includes(activeTab);
 
   const handleNavClick = (tab: any) => {
+    if (tab === 'customers' && activeTab === 'customers') {
+      setSelectedCustomerId(null);
+    }
     setActiveTab(tab);
     if (tab !== 'customers') {
       setSelectedCustomerId(null);
