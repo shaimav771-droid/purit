@@ -13,7 +13,9 @@ import {
   Trash2,
   Layers,
   History,
-  CheckCircle2
+  CheckCircle2,
+  BarChart2,
+  X
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../lib/dateUtils';
 import { AddProductModal } from './AddProductModal';
@@ -41,6 +43,7 @@ export const InventoryView: React.FC = () => {
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
   const [productToAdjust, setProductToAdjust] = useState<Product | null>(null);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [isValuationModalOpen, setIsValuationModalOpen] = useState<boolean>(false);
 
   // Filter products by category
   const filteredProducts = useMemo(() => {
@@ -49,9 +52,17 @@ export const InventoryView: React.FC = () => {
   }, [products, categoryFilter]);
 
   // Inventory valuation
-  const totalValuationCost = products.reduce((sum, p) => sum + (p.currentStock * p.makingCost), 0);
-  const totalValuationSelling = products.reduce((sum, p) => sum + (p.currentStock * p.sellingPrice), 0);
-  const lowStockProducts = products.filter(p => p.currentStock <= p.reorderLevel);
+  const totalValuationCost = useMemo(() => {
+    return products.reduce((sum, p) => sum + ((Number(p.currentStock) || 0) * (Number(p.makingCost) || 0)), 0);
+  }, [products]);
+
+  const totalValuationSelling = useMemo(() => {
+    return products.reduce((sum, p) => sum + ((Number(p.currentStock) || 0) * (Number(p.sellingPrice) || 0)), 0);
+  }, [products]);
+
+  const lowStockProducts = useMemo(() => {
+    return products.filter(p => (Number(p.currentStock) || 0) <= (Number(p.reorderLevel) || 0));
+  }, [products]);
 
   const handleDeleteConfirm = async () => {
     if (productToDelete) {
@@ -70,18 +81,24 @@ export const InventoryView: React.FC = () => {
             <Package className="w-6 h-6 text-emerald-600" />
             Inventory & Warehouse Stock
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-            Real-time stock levels, weighted-average making costs, and movement ledger.
-          </p>
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsValuationModalOpen(true)}
+            className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all border border-slate-200 shadow-2xs flex items-center justify-center cursor-pointer"
+            title="View Inventory Valuation & Summary Cards"
+            aria-label="View Inventory Valuation & Summary Cards"
+          >
+            <BarChart2 className="w-4 h-4 text-emerald-600" />
+          </button>
+
           <button
             onClick={() => {
               setSelectedProductForStock(null);
               setIsAddStockModalOpen(true);
             }}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-sm transition-all"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-sm transition-all cursor-pointer"
           >
             <PackagePlus className="w-4 h-4 text-teal-400" />
             <span>+ Receive Stock</span>
@@ -128,33 +145,6 @@ export const InventoryView: React.FC = () => {
           </button>
         </div>
       )}
-
-      {/* Valuation Metrics Bar */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs">
-          <span className="text-[10px] uppercase font-bold text-slate-400 block">Inventory Valuation (At Cost)</span>
-          <div className="text-xl font-black text-slate-900 mt-1">
-            {formatCurrency(totalValuationCost, settings.currency)}
-          </div>
-          <span className="text-xs text-slate-500">Based on weighted average unit costs</span>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs">
-          <span className="text-[10px] uppercase font-bold text-emerald-600 block">Inventory Potential (At Sales Price)</span>
-          <div className="text-xl font-black text-emerald-700 mt-1">
-            {formatCurrency(totalValuationSelling, settings.currency)}
-          </div>
-          <span className="text-xs text-emerald-600 font-semibold">Total realizable retail value</span>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs">
-          <span className="text-[10px] uppercase font-bold text-indigo-600 block">Product Items Tracked</span>
-          <div className="text-xl font-black text-indigo-900 mt-1">
-            {products.length} Items
-          </div>
-          <span className="text-xs text-slate-500">Handwash, Tissues & Dispensers</span>
-        </div>
-      </div>
 
       {/* Tabs & Category Filter Toolbar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-slate-200 text-xs font-semibold">
@@ -429,6 +419,85 @@ export const InventoryView: React.FC = () => {
         confirmText="Yes, Delete Product"
         confirmVariant="danger"
       />
+
+      {/* Valuation & Summary Popup Modal */}
+      {isValuationModalOpen && (
+        <div 
+          className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+          onClick={() => setIsValuationModalOpen(false)}
+        >
+          <div 
+            className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
+                  <BarChart2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-slate-900 leading-tight">
+                    Inventory Valuation & Metrics
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Real-time stock valuation and tracking overview
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsValuationModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 pt-1">
+              {/* Card 1: Inventory Valuation (At Cost) */}
+              <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                  Inventory Valuation (At Cost)
+                </span>
+                <div className="text-xl font-black text-slate-900 mt-1">
+                  {formatCurrency(totalValuationCost, settings.currency)}
+                </div>
+                <span className="text-xs text-slate-500">Based on weighted average unit costs</span>
+              </div>
+
+              {/* Card 2: Inventory Potential (At Sales Price) */}
+              <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs">
+                <span className="text-[10px] uppercase font-bold text-emerald-600 block">
+                  Inventory Potential (At Sales Price)
+                </span>
+                <div className="text-xl font-black text-emerald-700 mt-1">
+                  {formatCurrency(totalValuationSelling, settings.currency)}
+                </div>
+                <span className="text-xs text-emerald-600 font-semibold">Total realizable retail value</span>
+              </div>
+
+              {/* Card 3: Product Items Tracked */}
+              <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs">
+                <span className="text-[10px] uppercase font-bold text-indigo-600 block">
+                  Product Items Tracked
+                </span>
+                <div className="text-xl font-black text-indigo-900 mt-1">
+                  {products.length} Items
+                </div>
+                <span className="text-xs text-slate-500">Handwash, Tissues & Dispensers</span>
+              </div>
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button
+                onClick={() => setIsValuationModalOpen(false)}
+                className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-sm transition-all"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
