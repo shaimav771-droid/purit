@@ -61,6 +61,10 @@ export const AddActivityModal: React.FC = () => {
   const [remarks, setRemarks] = useState<string>('');
   const [assignedTo, setAssignedTo] = useState<string>('PURIT Field Team');
   
+  // Dispenser Count & Cost (Simple Model)
+  const [dispenserCount, setDispenserCount] = useState<number>(1);
+  const [dispenserCost, setDispenserCost] = useState<string>('');
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isSubmittingRef = useRef<boolean>(false);
 
@@ -88,6 +92,8 @@ export const AddActivityModal: React.FC = () => {
       setCustomerPhone('');
       setCustomerAddress('');
       setRemarks('');
+      setDispenserCount(1);
+      setDispenserCost('');
       setAssignedTo('PURIT Field Team');
       setSearchTerm('');
       setIsCustomerDropdownOpen(false);

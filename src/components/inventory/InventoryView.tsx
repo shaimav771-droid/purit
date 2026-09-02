@@ -15,7 +15,9 @@ import {
   History,
   CheckCircle2,
   BarChart2,
-  X
+  X,
+  Search,
+  Filter
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../lib/dateUtils';
 import { AddProductModal } from './AddProductModal';
@@ -36,6 +38,8 @@ export const InventoryView: React.FC = () => {
     setIsAddStockModalOpen,
     selectedProductForStock,
     setSelectedProductForStock,
+    searchQuery,
+    setSearchQuery,
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'catalog' | 'movements'>('catalog');
@@ -44,12 +48,22 @@ export const InventoryView: React.FC = () => {
   const [productToAdjust, setProductToAdjust] = useState<Product | null>(null);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [isValuationModalOpen, setIsValuationModalOpen] = useState<boolean>(false);
+  const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
+  const [localSearchTerm, setLocalSearchTerm] = useState<string>('');
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState<boolean>(false);
 
-  // Filter products by category
+  // Filter products by category and search query
   const filteredProducts = useMemo(() => {
-    if (categoryFilter === 'all') return products;
-    return products.filter(p => p.category === categoryFilter);
-  }, [products, categoryFilter]);
+    const query = (localSearchTerm || searchQuery || '').toLowerCase().trim();
+    return products.filter(p => {
+      const matchesCategory = categoryFilter === 'all' || p.category === categoryFilter;
+      const matchesSearch = !query || 
+        p.name.toLowerCase().includes(query) ||
+        (p.description && p.description.toLowerCase().includes(query)) ||
+        p.category.toLowerCase().includes(query);
+      return matchesCategory && matchesSearch;
+    });
+  }, [products, categoryFilter, localSearchTerm, searchQuery]);
 
   // Inventory valuation
   const totalValuationCost = useMemo(() => {
@@ -98,22 +112,55 @@ export const InventoryView: React.FC = () => {
               setSelectedProductForStock(null);
               setIsAddStockModalOpen(true);
             }}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-sm transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-sm transition-all cursor-pointer whitespace-nowrap"
           >
             <PackagePlus className="w-4 h-4 text-teal-400" />
             <span>+ Receive Stock</span>
           </button>
 
-          <button
-            onClick={() => {
-              setProductToEdit(null);
-              setIsAddProductModalOpen(true);
-            }}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-bold text-xs shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>New Product</span>
-          </button>
+          {/* Search Icon & Input */}
+          <div className="relative flex items-center">
+            {isSearchOpen ? (
+              <div className="flex items-center gap-1 bg-slate-100 rounded-xl border border-slate-300 p-1 animate-in fade-in zoom-in-95 duration-150">
+                <Search className="w-4 h-4 text-slate-400 ml-1.5 shrink-0" />
+                <input
+                  type="text"
+                  placeholder="Search products..."
+                  value={localSearchTerm}
+                  onChange={(e) => setLocalSearchTerm(e.target.value)}
+                  autoFocus
+                  className="bg-transparent text-slate-900 text-xs py-1 px-1.5 focus:outline-none w-32 sm:w-44"
+                />
+                {localSearchTerm && (
+                  <button
+                    onClick={() => setLocalSearchTerm('')}
+                    className="text-slate-400 hover:text-slate-600 p-0.5"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    setIsSearchOpen(false);
+                    setLocalSearchTerm('');
+                  }}
+                  className="p-1 rounded-lg hover:bg-slate-200 text-slate-500 transition-colors"
+                  title="Close Search"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setIsSearchOpen(true)}
+                className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all border border-slate-200 shadow-2xs flex items-center justify-center cursor-pointer"
+                title="Search Products"
+                aria-label="Search Products"
+              >
+                <Search className="w-4 h-4 text-slate-600" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -147,13 +194,13 @@ export const InventoryView: React.FC = () => {
       )}
 
       {/* Tabs & Category Filter Toolbar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-slate-200 text-xs font-semibold">
+      <div className="flex items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-slate-200 text-xs font-semibold relative">
         
         {/* Main View Tabs */}
         <div className="flex items-center gap-1">
           <button
             onClick={() => setActiveTab('catalog')}
-            className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'catalog' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}
           >
@@ -163,7 +210,7 @@ export const InventoryView: React.FC = () => {
 
           <button
             onClick={() => setActiveTab('movements')}
-            className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'movements' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}
           >
@@ -172,141 +219,168 @@ export const InventoryView: React.FC = () => {
           </button>
         </div>
 
-        {/* Category Filter for Catalog */}
+        {/* Category Filter Icon Button & Pop-Up */}
         {activeTab === 'catalog' && (
-          <div className="flex items-center gap-1 overflow-x-auto no-scrollbar scrollbar-none pb-1 sm:pb-0">
-            {['all', 'handwash', 'tissue', 'dispenser', 'other'].map(cat => (
-              <button
-                key={cat}
-                onClick={() => setCategoryFilter(cat)}
-                className={`px-2.5 py-1 rounded-lg text-xs capitalize whitespace-nowrap ${
-                  categoryFilter === cat ? 'bg-emerald-100 text-emerald-900 font-bold' : 'text-slate-500 hover:bg-slate-100'
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
+          <div className="relative">
+            <button
+              onClick={() => setIsCategoryModalOpen(!isCategoryModalOpen)}
+              className={`px-3 py-1.5 rounded-xl border transition-all flex items-center gap-1.5 cursor-pointer ${
+                categoryFilter !== 'all'
+                  ? 'bg-emerald-100 border-emerald-300 text-emerald-900 font-bold'
+                  : 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700'
+              }`}
+              title="Filter by Category"
+            >
+              <Filter className="w-4 h-4 text-emerald-600" />
+              <span className="capitalize text-xs">{categoryFilter === 'all' ? 'Filter' : categoryFilter}</span>
+            </button>
+
+            {/* Category Selection Pop-up */}
+            {isCategoryModalOpen && (
+              <>
+                <div 
+                  className="fixed inset-0 z-40" 
+                  onClick={() => setIsCategoryModalOpen(false)} 
+                />
+
+                <div className="absolute right-0 top-full mt-2 z-50 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 min-w-[160px] animate-in fade-in zoom-in-95 duration-150 space-y-1">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-2.5 py-1 border-b border-slate-100 flex items-center justify-between">
+                    <span>Filter Category</span>
+                    <Filter className="w-3 h-3 text-slate-400" />
+                  </div>
+
+                  {['all', 'handwash', 'tissue', 'dispenser', 'other'].map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => {
+                        setCategoryFilter(cat);
+                        setIsCategoryModalOpen(false);
+                      }}
+                      className={`w-full text-left px-3 py-2 rounded-xl text-xs capitalize transition-colors flex items-center justify-between cursor-pointer ${
+                        categoryFilter === cat
+                          ? 'bg-emerald-50 text-emerald-900 font-bold'
+                          : 'text-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      <span>{cat}</span>
+                      {categoryFilter === cat && (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>
 
       {/* Tab 1: Catalog Products Grid */}
       {activeTab === 'catalog' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="space-y-2">
           {filteredProducts.map((product) => {
-            const isLowStock = product.currentStock <= product.reorderLevel;
-            const marginPerUnit = product.sellingPrice - product.makingCost;
-            const marginPercent = product.sellingPrice > 0
-              ? Math.round((marginPerUnit / product.sellingPrice) * 100)
+            const currentStock = Number(product.currentStock) || 0;
+            const reorderLevel = Number(product.reorderLevel) || 0;
+            const makingCost = Number(product.makingCost) || 0;
+            const sellingPrice = Number(product.sellingPrice) || 0;
+
+            const isLowStock = currentStock <= reorderLevel;
+            const marginPerUnit = sellingPrice - makingCost;
+            const marginPercent = sellingPrice > 0
+              ? Math.round((marginPerUnit / sellingPrice) * 100)
               : 0;
 
             return (
               <div
                 key={product.id}
-                className={`bg-white rounded-3xl border p-5 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between ${
-                  isLowStock ? 'border-rose-300 ring-1 ring-rose-200/60' : 'border-slate-200'
+                className={`bg-white rounded-xl border p-2 sm:p-2.5 shadow-2xs hover:shadow-md transition-all space-y-1 ${
+                  isLowStock ? 'border-rose-300 ring-1 ring-rose-200/60 bg-rose-50/10' : 'border-slate-200'
                 }`}
               >
-                <div>
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-100 text-slate-600 mb-1 inline-block">
-                        {product.category}
-                      </span>
-                      <h3 className="font-extrabold text-base text-slate-900 leading-snug">
-                        {product.name}
-                      </h3>
-                    </div>
-
+                {/* Header Row: Category Badge, Stock Badge & Actions */}
+                <div className="flex items-center justify-between gap-1">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
+                      {product.category}
+                    </span>
                     <span
-                      className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase shrink-0 ${
+                      className={`text-[8px] px-1.5 py-0.5 rounded-full font-bold uppercase ${
                         isLowStock ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'
                       }`}
                     >
-                      {isLowStock ? 'Low Stock' : 'In Stock'}
+                      {isLowStock ? 'Low' : 'In Stock'}
                     </span>
                   </div>
 
-                  {product.description && (
-                    <p className="text-xs text-slate-500 mt-1 line-clamp-2">{product.description}</p>
-                  )}
-
-                  {/* Stock Levels Meter */}
-                  <div className="mt-4 p-3 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Available Stock</span>
-                      <div className={`text-xl font-black ${isLowStock ? 'text-rose-600' : 'text-slate-900'}`}>
-                        {product.currentStock} <span className="text-xs font-semibold text-slate-500">{product.unit}</span>
-                      </div>
-                    </div>
-
-                    <div className="text-right">
-                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Alert Below</span>
-                      <span className="text-xs font-bold text-slate-700">{product.reorderLevel} {product.unit}</span>
-                    </div>
-                  </div>
-
-                  {/* Financial & Margin Details */}
-                  <div className="grid grid-cols-3 gap-2 mt-3 text-center text-xs">
-                    <div className="p-2 rounded-xl bg-slate-50">
-                      <span className="text-[10px] text-slate-400 font-medium block">Making Cost</span>
-                      <span className="font-bold text-slate-800">
-                        {formatCurrency(product.makingCost, settings.currency)}
-                      </span>
-                    </div>
-
-                    <div className="p-2 rounded-xl bg-slate-50">
-                      <span className="text-[10px] text-slate-400 font-medium block">Selling Price</span>
-                      <span className="font-bold text-emerald-700">
-                        {formatCurrency(product.sellingPrice, settings.currency)}
-                      </span>
-                    </div>
-
-                    <div className="p-2 rounded-xl bg-emerald-50/50">
-                      <span className="text-[10px] text-emerald-600 font-medium block">Gross Margin</span>
-                      <span className="font-extrabold text-emerald-800">
-                        {marginPercent}%
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Card Actions */}
-                <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between gap-1.5">
-                  <div className="flex items-center gap-1">
+                  {/* Actions */}
+                  <div className="flex items-center gap-1 shrink-0">
                     <button
                       onClick={() => setProductToEdit(product)}
-                      className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+                      className="p-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
                       title="Edit Product"
                     >
-                      <Edit2 className="w-3.5 h-3.5" />
+                      <Edit2 className="w-3 h-3" />
                     </button>
                     <button
                       onClick={() => setProductToAdjust(product)}
-                      className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+                      className="p-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
                       title="Adjust / Damaged"
                     >
-                      <SlidersHorizontal className="w-3.5 h-3.5" />
+                      <SlidersHorizontal className="w-3 h-3" />
                     </button>
                     <button
                       onClick={() => setProductToDelete(product)}
-                      className="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-100 text-slate-400 hover:text-rose-600 transition-colors"
+                      className="p-1 rounded bg-slate-100 hover:bg-rose-100 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
                       title="Delete Product"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedProductForStock(product);
+                        setIsAddStockModalOpen(true);
+                      }}
+                      className="flex items-center gap-0.5 px-2 py-0.5 rounded bg-teal-600 hover:bg-teal-700 text-white font-bold text-[10px] transition-colors cursor-pointer ml-0.5 shrink-0"
+                    >
+                      <PackagePlus className="w-3 h-3" />
+                      <span>+ Stock</span>
                     </button>
                   </div>
+                </div>
 
-                  <button
-                    onClick={() => {
-                      setSelectedProductForStock(product);
-                      setIsAddStockModalOpen(true);
-                    }}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-xs transition-colors"
-                  >
-                    <PackagePlus className="w-3.5 h-3.5" />
-                    <span>+ Add Stock</span>
-                  </button>
+                {/* Full Product Name (No Truncation!) */}
+                <h3 className="font-extrabold text-xs text-slate-900 leading-snug break-words">
+                  {product.name}
+                </h3>
+
+                {/* 5-Column Metrics Bar (Stock & Financials) */}
+                <div className="grid grid-cols-5 gap-1 text-center text-[10px] bg-slate-50 p-1 rounded-lg border border-slate-100">
+                  <div className="border-r border-slate-200 pr-0.5">
+                    <span className="text-[7.5px] uppercase font-bold text-slate-400 block truncate">Stock</span>
+                    <span className={`font-black ${isLowStock ? 'text-rose-600' : 'text-slate-900'}`}>
+                      {currentStock} <span className="text-[8px] font-normal text-slate-500">{product.unit}</span>
+                    </span>
+                  </div>
+
+                  <div className="border-r border-slate-200 pr-0.5">
+                    <span className="text-[7.5px] uppercase font-bold text-slate-400 block truncate">Alert Below</span>
+                    <span className="font-bold text-slate-700">{reorderLevel} {product.unit}</span>
+                  </div>
+
+                  <div className="border-r border-slate-200 pr-0.5">
+                    <span className="text-[7.5px] uppercase font-bold text-slate-400 block truncate">Making Cost</span>
+                    <span className="font-bold text-slate-800">{formatCurrency(makingCost, settings.currency)}</span>
+                  </div>
+
+                  <div className="border-r border-slate-200 pr-0.5">
+                    <span className="text-[7.5px] uppercase font-bold text-slate-400 block truncate">Selling Price</span>
+                    <span className="font-bold text-emerald-700">{formatCurrency(sellingPrice, settings.currency)}</span>
+                  </div>
+
+                  <div>
+                    <span className="text-[7.5px] uppercase font-bold text-emerald-600 block truncate">Margin</span>
+                    <span className="font-extrabold text-emerald-800">{marginPercent}%</span>
+                  </div>
                 </div>
               </div>
             );

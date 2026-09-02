@@ -208,6 +208,14 @@ export const ActivitiesView: React.FC = () => {
   return (
     <div id="activities-view" className="space-y-3 pb-16">
       
+      {/* Brand Header for First Screen / Landing Page */}
+      <div className="flex items-center gap-2.5 pt-0.5 pb-1">
+        <div className="w-8 h-8 rounded-xl bg-emerald-700 text-white flex items-center justify-center font-black tracking-tight text-base shadow-sm">
+          P
+        </div>
+        <span className="font-black text-slate-900 text-xl tracking-tight">PURIT</span>
+      </div>
+
       {/* 1. TOP SECTION — SCHEDULED ACTIVITY (Compact Operational Card) */}
       <div className="bg-slate-900 text-white rounded-2xl p-3 sm:p-4 shadow-md border border-slate-800">
         

@@ -54,6 +54,20 @@ export const BottomNav: React.FC = () => {
     setIsMoreOpen(false);
   };
 
+  const handleFabClick = () => {
+    if (activeTab === 'activities') {
+      setIsFabOpen(false);
+      setIsAddActivityModalOpen(true);
+      return;
+    }
+    if (activeTab === 'inventory') {
+      setIsFabOpen(false);
+      setIsAddProductModalOpen(true);
+      return;
+    }
+    setIsFabOpen(!isFabOpen);
+  };
+
   return (
     <>
       {/* Floating Action Button (FAB) for Quick Entry on Mobile */}
@@ -142,7 +156,7 @@ export const BottomNav: React.FC = () => {
 
         <button
           id="mobile-fab-button"
-          onClick={() => setIsFabOpen(!isFabOpen)}
+          onClick={handleFabClick}
           className={`w-13 h-13 rounded-full flex items-center justify-center text-white shadow-xl shadow-emerald-700/30 transition-all ${
             isFabOpen ? 'bg-slate-900 rotate-45' : 'bg-emerald-600 active:scale-95'
           }`}
