@@ -13,9 +13,7 @@ import {
   Calendar,
   ChevronDown,
   ChevronUp,
-  Wrench,
-  CheckCircle2,
-  AlertCircle
+  Wrench
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../lib/dateUtils';
 import { downloadInvoicePDF } from '../../lib/pdfGenerator';
@@ -324,7 +322,7 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
       {/* 1. CUSTOMER CARD */}
       <div className="bg-white border border-slate-100/90 rounded-3xl p-5 sm:p-6 shadow-xs space-y-5">
 
-        {/* Top Row: Avatar, Info, Active Badge, Edit Button */}
+        {/* Top Row: Avatar, Info (Name + Active Badge inline), Edit Button */}
         <div className="flex items-start justify-between gap-3 flex-wrap sm:flex-nowrap">
           <div className="flex items-start gap-4">
             {/* Avatar Initials */}
@@ -334,35 +332,36 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
 
             {/* Name & Subtitle/Phone */}
             <div className="pt-0.5">
-              <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight capitalize">
-                {currentCustomer.restaurantName}
-              </h1>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight capitalize">
+                  {currentCustomer.restaurantName}
+                </h1>
+                {/* ACTIVE Status Badge inline with name */}
+                <span className={`px-3 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 ${
+                  currentCustomer.status === 'active' || !currentCustomer.status
+                    ? 'bg-[#dcfce7] text-[#16a34a]'
+                    : currentCustomer.status === 'lost'
+                    ? 'bg-rose-100 text-rose-700'
+                    : 'bg-amber-100 text-amber-700'
+                }`}>
+                  <span>{currentCustomer.status || 'ACTIVE'}</span>
+                  <span className={`w-2 h-2 rounded-full ${
+                    currentCustomer.status === 'active' || !currentCustomer.status
+                      ? 'bg-[#16a34a]'
+                      : currentCustomer.status === 'lost'
+                      ? 'bg-rose-600'
+                      : 'bg-amber-600'
+                  }`} />
+                </span>
+              </div>
               <p className="text-sm text-slate-400 font-medium mt-0.5">
                 {currentCustomer.phone || currentCustomer.id || '123456678'}
               </p>
             </div>
           </div>
 
-          {/* Badge & Edit Button */}
+          {/* Edit Button */}
           <div className="flex items-center gap-3 pt-0.5">
-            {/* ACTIVE Badge */}
-            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 ${
-              currentCustomer.status === 'active' || !currentCustomer.status
-                ? 'bg-[#dcfce7] text-[#16a34a]'
-                : currentCustomer.status === 'lost'
-                ? 'bg-rose-100 text-rose-700'
-                : 'bg-amber-100 text-amber-700'
-            }`}>
-              <span>{currentCustomer.status || 'ACTIVE'}</span>
-              <span className={`w-2 h-2 rounded-full ${
-                currentCustomer.status === 'active' || !currentCustomer.status
-                  ? 'bg-[#16a34a]'
-                  : currentCustomer.status === 'lost'
-                  ? 'bg-rose-600'
-                  : 'bg-amber-600'
-              }`} />
-            </span>
-
             {/* Dark Navy "Edit" Button */}
             <button
               onClick={() => setIsEditModalOpen(true)}
@@ -405,134 +404,128 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
         </div>
       </div>
 
-      {/* 2. METRICS BAR (3 equal horizontal columns with vertical dividers) */}
-      <div className="bg-white border border-slate-100 rounded-3xl shadow-xs overflow-hidden">
-        <div className="grid grid-cols-3 divide-x divide-slate-100">
-          {/* TOTAL RECEIVED (green) */}
-          <div className="p-4 sm:p-5 space-y-2">
-            <span className="text-[10px] sm:text-xs font-bold text-[#00875a] uppercase tracking-wider block">
-              TOTAL RECEIVED
-            </span>
-            <div className="flex items-center justify-between gap-1">
-              <div className="text-xl sm:text-3xl font-extrabold text-[#00875a]">
-                {formatCurrency(totalReceivedVal, settings.currency)}
-              </div>
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-[#dcfce7] text-[#00875a] flex items-center justify-center shrink-0">
-                <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" />
-              </div>
-            </div>
+      {/* 2. TOP FINANCIAL SUMMARY CARDS (3 separate, distinct horizontal cards) */}
+      <div className="grid grid-cols-3 gap-2">
+        {/* Card 1: TOTAL SALES */}
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-2.5 sm:p-4 shadow-xs text-center min-w-0 space-y-0.5 sm:space-y-1">
+          <span className="text-[9px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider block truncate">
+            TOTAL SALES
+          </span>
+          <div className="text-base sm:text-2xl font-black text-slate-900 truncate">
+            {formatCurrency(totalSalesVal, settings.currency)}
           </div>
+        </div>
 
-          {/* PENDING AMOUNT (red) */}
-          <div className="p-4 sm:p-5 space-y-2">
-            <span className="text-[10px] sm:text-xs font-bold text-[#dc2626] uppercase tracking-wider block">
-              PENDING AMOUNT
-            </span>
-            <div className="flex items-center justify-between gap-1">
-              <div className="text-xl sm:text-3xl font-extrabold text-[#dc2626]">
-                {formatCurrency(totalPendingVal, settings.currency)}
-              </div>
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-[#fee2e2] text-[#dc2626] flex items-center justify-center shrink-0">
-                <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5" />
-              </div>
-            </div>
+        {/* Card 2: RECEIVED */}
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-2.5 sm:p-4 shadow-xs text-center min-w-0 space-y-0.5 sm:space-y-1">
+          <span className="text-[9px] sm:text-xs font-bold text-[#00875a] uppercase tracking-wider block truncate">
+            RECEIVED
+          </span>
+          <div className="text-base sm:text-2xl font-black text-[#00875a] truncate">
+            {formatCurrency(totalReceivedVal, settings.currency)}
           </div>
+        </div>
 
-          {/* TOTAL INVOICED (grey) */}
-          <div className="p-4 sm:p-5 space-y-2">
-            <span className="text-[10px] sm:text-xs font-bold text-[#64748b] uppercase tracking-wider block">
-              TOTAL INVOICED
-            </span>
-            <div className="flex items-center justify-between gap-1">
-              <div className="text-xl sm:text-3xl font-extrabold text-[#334155]">
-                {formatCurrency(totalSalesVal, settings.currency)}
-              </div>
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-[#f1f5f9] text-[#475569] flex items-center justify-center shrink-0">
-                <Receipt className="w-4 h-4 sm:w-5 sm:h-5" />
-              </div>
-            </div>
+        {/* Card 3: PENDING */}
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-2.5 sm:p-4 shadow-xs text-center min-w-0 space-y-0.5 sm:space-y-1">
+          <span className="text-[9px] sm:text-xs font-bold text-[#dc2626] uppercase tracking-wider block truncate">
+            PENDING
+          </span>
+          <div className="text-base sm:text-2xl font-black text-[#dc2626] truncate">
+            {formatCurrency(totalPendingVal, settings.currency)}
           </div>
         </div>
       </div>
 
-      {/* 4. CUSTOMER INFORMATION SECTION (Multi-column grid) */}
+      {/* 3. CUSTOMER INFORMATION SECTION (Vertical stacked layout matching reference image) */}
       <div className="bg-white border border-slate-100 rounded-3xl p-5 sm:p-6 shadow-xs">
-        <h2 className="text-xs font-black text-slate-900 uppercase tracking-wider mb-4 pb-3 border-b border-slate-100 flex items-center gap-2">
-          <Building2 className="w-4 h-4 text-emerald-600" />
+        <h2 className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wider mb-4 pb-3 border-b border-slate-100 flex items-center gap-2">
+          <Building2 className="w-4.5 h-4.5 text-emerald-600" />
           Customer Information
         </h2>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 text-xs">
-          <div>
-            <span className="text-slate-400 font-bold uppercase text-[10px] tracking-wider block mb-1">Customer Name</span>
-            <div className="font-extrabold text-sm text-slate-900">{currentCustomer.restaurantName}</div>
+        <div className="space-y-4">
+          {/* 1. CUSTOMER NAME */}
+          <div className="space-y-1">
+            <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider block">
+              Customer Name
+            </span>
+            <div className="font-extrabold text-base text-slate-900">
+              {currentCustomer.restaurantName}
+            </div>
             {currentCustomer.legalName && (
-              <div className="text-slate-500 text-[11px] mt-0.5 font-medium">Legal: {currentCustomer.legalName}</div>
+              <div className="text-slate-500 text-xs font-medium">
+                Legal: {currentCustomer.legalName}
+              </div>
             )}
           </div>
 
-          <div>
-            <span className="text-slate-400 font-bold uppercase text-[10px] tracking-wider block mb-1">Phone Number</span>
-            <div className="font-extrabold text-slate-900 flex items-center gap-1.5">
-              <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          {/* 2. PHONE NUMBER */}
+          <div className="space-y-1">
+            <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider block">
+              Phone Number
+            </span>
+            <div className="font-extrabold text-sm sm:text-base text-slate-900 flex items-center gap-2">
+              <Phone className="w-4 h-4 text-slate-400 shrink-0 stroke-[1.75]" />
               <a href={`tel:${currentCustomer.phone}`} className="hover:text-emerald-600 transition-colors">
                 {currentCustomer.phone || 'N/A'}
               </a>
             </div>
           </div>
 
-          <div>
-            <span className="text-slate-400 font-bold uppercase text-[10px] tracking-wider block mb-1">Email Address</span>
-            <div className="font-semibold text-slate-800 flex items-center gap-1.5">
-              <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          {/* 3. EMAIL ADDRESS */}
+          <div className="space-y-1">
+            <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider block">
+              Email Address
+            </span>
+            <div className="font-semibold text-sm text-slate-800 flex items-center gap-2">
+              <Mail className="w-4 h-4 text-slate-400 shrink-0 stroke-[1.75]" />
               <span>{currentCustomer.email || 'N/A'}</span>
             </div>
           </div>
 
-          <div>
-            <span className="text-slate-400 font-bold uppercase text-[10px] tracking-wider block mb-1">GSTIN</span>
-            <div className="font-extrabold text-slate-900 font-mono">
+          {/* 4. GSTIN */}
+          <div className="space-y-1">
+            <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider block">
+              GSTIN
+            </span>
+            <div className="font-extrabold text-sm text-slate-900">
               {currentCustomer.gstin || (currentCustomer.gstEnabled ? 'Active (Pending No.)' : 'N/A')}
             </div>
           </div>
 
-          <div className="sm:col-span-2">
-            <span className="text-slate-400 font-bold uppercase text-[10px] tracking-wider block mb-1">Address</span>
-            <div className="font-semibold text-slate-800 flex items-start gap-1.5">
-              <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+          {/* 5. ADDRESS */}
+          <div className="space-y-1">
+            <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider block">
+              Address
+            </span>
+            <div className="font-semibold text-sm text-slate-800 flex items-start gap-2 leading-relaxed">
+              <MapPin className="w-4 h-4 text-slate-400 shrink-0 mt-0.5 stroke-[1.75]" />
               <span>{currentCustomer.address || currentCustomer.billingAddress || 'N/A'}</span>
             </div>
           </div>
 
-          <div>
-            <span className="text-slate-400 font-bold uppercase text-[10px] tracking-wider block mb-1">Customer Since</span>
-            <div className="font-semibold text-slate-800 flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          {/* 6. CUSTOMER SINCE */}
+          <div className="space-y-1">
+            <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider block">
+              Customer Since
+            </span>
+            <div className="font-semibold text-sm text-slate-800 flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-slate-400 shrink-0 stroke-[1.75]" />
               <span>{formatDate(currentCustomer.createdAt)}</span>
-            </div>
-          </div>
-
-          <div>
-            <span className="text-slate-400 font-bold uppercase text-[10px] tracking-wider block mb-1">Account Status</span>
-            <div className="flex items-center gap-2 mt-0.5">
-              <span className={`w-2.5 h-2.5 rounded-full ${currentCustomer.status === 'active' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-              <span className="font-bold text-slate-800 capitalize text-xs">{currentCustomer.status}</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 5. SALES HISTORY SECTION */}
+      {/* 4. SALES HISTORY SECTION */}
       <div className="bg-white border border-slate-100 rounded-3xl p-5 sm:p-6 shadow-xs">
-        <div className="flex items-center justify-between mb-5 pb-3 border-b border-slate-100">
+        <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
           <div>
             <h2 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
               <Receipt className="w-4 h-4 text-emerald-600" />
               Sales History ({customerSales.length})
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5 font-medium">
-              All invoices and payment status records for this customer account.
-            </p>
           </div>
 
           <button
@@ -544,11 +537,11 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
         </div>
 
         {customerSales.length === 0 ? (
-          <div className="py-12 text-center text-slate-400 text-xs font-medium bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+          <div className="py-10 text-center text-slate-400 text-xs font-medium bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
             No sales or purchase history recorded for this customer yet.
           </div>
         ) : (
-          <div className="space-y-2.5">
+          <div className="space-y-2">
             {customerSales.map((sale) => {
               const isExpanded = expandedSaleIds.has(sale.id);
               const items = saleItems.filter(si => si.saleId === sale.id);
@@ -557,74 +550,74 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
                 <div 
                   key={sale.id}
                   className={`border rounded-xl transition-all ${
-                    isExpanded ? 'border-emerald-300 bg-slate-50/50 shadow-xs' : 'border-slate-200 bg-white hover:border-slate-300'
+                    isExpanded ? 'border-emerald-300 bg-slate-50/50 shadow-xs' : 'border-slate-200/90 bg-white hover:border-slate-300'
                   }`}
                 >
-                  {/* Clean Horizontal Transaction Row */}
+                  {/* Clean Compact Horizontal Transaction Row */}
                   <div 
                     onClick={() => handleToggleExpandSale(sale.id)}
-                    className="p-3.5 sm:p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4 cursor-pointer select-none"
+                    className="p-2.5 sm:p-3 flex flex-col md:flex-row md:items-center justify-between gap-2.5 md:gap-3 cursor-pointer select-none"
                   >
                     {/* 1. Invoice ID & Date */}
-                    <div className="min-w-[150px]">
-                      <div className="font-black text-sm text-slate-900">
+                    <div className="min-w-[130px]">
+                      <div className="font-extrabold text-xs sm:text-sm text-slate-900">
                         {getFormattedInvoiceId(sale.invoiceNumber)}
                       </div>
-                      <div className="text-[11px] text-slate-500 font-medium mt-0.5">
+                      <div className="text-[10px] text-slate-500 font-medium">
                         {formatDateTime(sale.saleDate || sale.createdAt)}
                       </div>
                     </div>
 
                     {/* 2. Item Summary */}
-                    <div className="flex-1 min-w-[180px]">
-                      <div className="text-xs text-slate-700 font-semibold truncate">
+                    <div className="flex-1 min-w-[140px]">
+                      <div className="text-xs text-slate-700 font-medium truncate">
                         {getItemSummaryText(sale.id)}
                       </div>
                     </div>
 
                     {/* 3. Financials (Total, Paid in green, Pending in red) */}
-                    <div className="flex items-center gap-4 text-xs">
+                    <div className="flex items-center gap-3.5 text-xs">
                       <div>
-                        <span className="text-[9px] uppercase font-bold text-slate-400 block">Total</span>
-                        <span className="font-black text-slate-900">
+                        <span className="text-[9px] uppercase font-bold text-slate-400 block leading-none">Total</span>
+                        <span className="font-extrabold text-slate-900 text-xs">
                           {formatCurrency(sale.invoiceTotal, settings.currency)}
                         </span>
                       </div>
 
                       <div>
-                        <span className="text-[9px] uppercase font-bold text-emerald-600 block">Paid</span>
-                        <span className="font-black text-emerald-600">
+                        <span className="text-[9px] uppercase font-bold text-emerald-600 block leading-none">Paid</span>
+                        <span className="font-extrabold text-emerald-600 text-xs">
                           {formatCurrency(sale.paidAmount, settings.currency)}
                         </span>
                       </div>
 
                       <div>
-                        <span className="text-[9px] uppercase font-bold text-rose-600 block">Pending</span>
-                        <span className={`font-black ${sale.pendingAmount > 0 ? 'text-rose-600' : 'text-slate-400'}`}>
+                        <span className="text-[9px] uppercase font-bold text-rose-600 block leading-none">Pending</span>
+                        <span className={`font-extrabold text-xs ${sale.pendingAmount > 0 ? 'text-rose-600' : 'text-slate-400'}`}>
                           {formatCurrency(sale.pendingAmount, settings.currency)}
                         </span>
                       </div>
                     </div>
 
                     {/* 4. Status Badges (PAID, PARTIAL, UNPAID) & Actions */}
-                    <div className="flex items-center gap-3 justify-between md:justify-end" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center gap-2 justify-between md:justify-end" onClick={(e) => e.stopPropagation()}>
                       {renderPaymentStatusBadge(sale.paymentStatus)}
 
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1">
                         {sale.pendingAmount > 0 && (
                           <button
                             onClick={() => {
                               setSelectedSaleForPayment(sale);
                               setIsAddPaymentModalOpen(true);
                             }}
-                            className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-bold text-[11px] hover:bg-emerald-700 transition-colors shadow-xs cursor-pointer"
+                            className="px-2 py-0.5 rounded-lg bg-emerald-600 text-white font-bold text-[10px] hover:bg-emerald-700 transition-colors shadow-xs cursor-pointer"
                           >
                             + Pay
                           </button>
                         )}
                         <button
                           onClick={(e) => handleDownloadInvoice(e, sale)}
-                          className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+                          className="p-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
                           title="Download Invoice PDF"
                         >
                           <Download className="w-3.5 h-3.5" />
@@ -632,9 +625,9 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
 
                         <button
                           onClick={() => handleToggleExpandSale(sale.id)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                          className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
                         >
-                          {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                          {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                         </button>
                       </div>
                     </div>

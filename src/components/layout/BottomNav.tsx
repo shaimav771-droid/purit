@@ -30,6 +30,7 @@ export const BottomNav: React.FC = () => {
     sales,
     activities,
     isDashboardUnlocked,
+    selectedCustomerId,
     setSelectedCustomerId,
     setIsNewSaleModalOpen,
     setIsAddCustomerModalOpen,
@@ -60,7 +61,8 @@ export const BottomNav: React.FC = () => {
   return (
     <>
       {/* Floating Action Button (FAB) for Quick Entry on Mobile */}
-      <div className="md:hidden fixed bottom-20 right-4 z-40">
+      {activeTab !== 'customers' && (
+        <div className="md:hidden fixed bottom-20 right-4 z-40">
         <AnimatePresence>
           {isFabOpen && (
             <>
@@ -153,6 +155,7 @@ export const BottomNav: React.FC = () => {
           <Plus className="w-6 h-6" />
         </button>
       </div>
+      )}
 
       {/* "More" Menu Bottom Sheet for Mobile */}
       <AnimatePresence>

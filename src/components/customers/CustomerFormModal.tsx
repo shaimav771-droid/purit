@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Customer } from '../../types';
-import { X, Building2, Phone, Mail, MapPin, Receipt, Check, FileSpreadsheet, Globe } from 'lucide-react';
+import { X, Building2, Phone, Mail, MapPin, DollarSign, FileSpreadsheet, ChevronDown } from 'lucide-react';
 
 interface CustomerFormModalProps {
   isOpen: boolean;
@@ -114,54 +114,54 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150 my-8 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+      <div className="bg-white rounded-[28px] max-w-lg w-full p-5 sm:p-7 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150 my-6 max-h-[90vh] overflow-y-auto">
         
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+        <div className="flex items-start justify-between pb-4">
           <div>
-            <h2 className="text-lg font-black text-slate-900 tracking-tight">
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
               {customerToEdit ? 'Edit Customer Profile' : 'Add New Customer'}
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs sm:text-sm text-slate-500 mt-1 font-medium leading-relaxed">
               Client profile, contact coordinates, and GST billing preferences.
             </p>
           </div>
           <button 
+            type="button"
             onClick={onClose}
-            className="p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
+            className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors cursor-pointer shrink-0 ml-2"
+            aria-label="Close"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 mt-4 text-xs">
+        <form onSubmit={handleSubmit} className="space-y-4 text-xs sm:text-sm">
           
-          {/* GST Toggle [ ON / OFF ] */}
-          <div className="p-3.5 rounded-2xl bg-teal-50/70 border border-teal-200/80 flex items-center justify-between transition-all">
-            <div className="flex items-center gap-2.5">
-              <div className={`p-2 rounded-xl ${gstEnabled ? 'bg-teal-700 text-white' : 'bg-slate-200 text-slate-600'}`}>
-                <Receipt className="w-4 h-4" />
+          {/* GST Customer Box */}
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-[#ecfdf5] border border-emerald-200/80 flex items-center justify-between gap-3 shadow-2xs">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-slate-200/80 text-slate-600 flex items-center justify-center shrink-0 border border-slate-300/60 shadow-2xs">
+                <DollarSign className="w-5 h-5 stroke-[2.25]" />
               </div>
-              <div>
-                <span className="font-bold text-slate-900 text-xs">GST Customer</span>
-                <p className="text-[11px] text-slate-500">
-                  {gstEnabled 
-                    ? '18% GST (9% CGST + 9% SGST) applied on generated tax invoices' 
-                    : 'Standard non-GST invoice format'}
+              <div className="min-w-0">
+                <div className="font-extrabold text-slate-900 text-sm sm:text-base tracking-tight">GST Customer</div>
+                <p className="text-xs text-slate-500 font-medium truncate mt-0.5">
+                  {gstEnabled ? 'GST invoice format (18% tax)' : 'Standard non-GST invoice format'}
                 </p>
               </div>
             </div>
 
-            {/* Segmented ON/OFF Switch */}
-            <div className="inline-flex rounded-xl p-1 bg-white border border-teal-200 shadow-2xs">
+            {/* Segmented ON/OFF Pill Toggle */}
+            <div className="inline-flex rounded-full p-1 bg-white border border-slate-200 shadow-2xs shrink-0">
               <button
                 type="button"
                 onClick={() => setGstEnabled(false)}
-                className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                className={`px-3.5 py-1 text-xs font-black rounded-full transition-all cursor-pointer ${
                   !gstEnabled
-                    ? 'bg-slate-900 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-[#0f172a] text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 font-bold'
                 }`}
               >
                 OFF
@@ -169,10 +169,10 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
               <button
                 type="button"
                 onClick={() => setGstEnabled(true)}
-                className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                className={`px-3.5 py-1 text-xs font-black rounded-full transition-all cursor-pointer ${
                   gstEnabled
-                    ? 'bg-teal-700 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-[#0f172a] text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 font-bold'
                 }`}
               >
                 ON
@@ -180,156 +180,67 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
             </div>
           </div>
 
-          {/* Business / Restaurant Name */}
+          {/* Restaurant / Display Name */}
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">
-              Restaurant / Display Name <span className="text-rose-500">*</span>
+            <label className="block font-bold text-slate-800 mb-1.5 text-xs sm:text-sm">
+              Restaurant / Display Name <span className="text-rose-500 font-bold">*</span>
             </label>
             <div className="relative">
-              <Building2 className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Building2 className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 required
                 placeholder="e.g. MSTORE / Royal Punjab"
                 value={restaurantName}
                 onChange={(e) => setRestaurantName(e.target.value)}
-                className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-teal-600 text-sm font-medium"
+                className="w-full pl-10 pr-3.5 py-2.5 rounded-2xl border border-slate-200 bg-white focus:outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 text-xs sm:text-sm font-medium text-slate-800 placeholder:text-slate-400 shadow-2xs transition-all"
               />
             </div>
           </div>
 
-          {/* Conditional GST Section when GST = ON */}
-          {gstEnabled ? (
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3.5 animate-in fade-in duration-200">
-              <div className="flex items-center gap-1.5 text-teal-800 font-bold text-xs pb-1 border-b border-slate-200/60">
-                <FileSpreadsheet className="w-3.5 h-3.5" />
-                <span>GST Registration & Legal Billing Coordinates</span>
-              </div>
-
-              {/* Legal Business Name */}
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">
-                  Legal / Business Name <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required={gstEnabled}
-                  placeholder="e.g. MSTORE PRIVATE LIMITED"
-                  value={legalName}
-                  onChange={(e) => setLegalName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-teal-600 text-xs font-semibold"
-                />
-              </div>
-
-              {/* GSTIN */}
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">
-                  GSTIN (15-digit Tax Identification) <span className="text-rose-500">*</span>
-                </label>
-                <div className="relative">
-                  <Receipt className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    required={gstEnabled}
-                    placeholder="e.g. 32ABZFM4622N1ZN"
-                    value={gstin}
-                    onChange={(e) => setGstin(e.target.value.toUpperCase())}
-                    className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-teal-600 text-xs font-mono uppercase font-bold text-teal-900"
-                  />
-                </div>
-              </div>
-
-              {/* Billing Address */}
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">
-                  Billing Address <span className="text-rose-500">*</span>
-                </label>
-                <textarea
-                  required={gstEnabled}
-                  rows={2}
-                  placeholder="e.g. APTA COWORKS, Building No. 61A, Kuzhippuram Vengara Road, Kottapparambu, Parappur, Malappuram - 676304"
-                  value={billingAddress}
-                  onChange={(e) => setBillingAddress(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-teal-600 text-xs"
-                />
-              </div>
-
-              {/* State and State Code */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
-                    State <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required={gstEnabled}
-                    placeholder="Kerala"
-                    value={state}
-                    onChange={(e) => setState(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-teal-600 text-xs font-medium"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
-                    State Code <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required={gstEnabled}
-                    placeholder="32"
-                    value={stateCode}
-                    onChange={(e) => setStateCode(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-teal-600 text-xs font-mono font-medium"
-                  />
-                </div>
-              </div>
-            </div>
-          ) : null}
-
-          {/* Contact Coordinates */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">
-                Phone Number <span className="text-rose-500">*</span>
-              </label>
-              <div className="relative">
-                <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="tel"
-                  required
-                  placeholder="e.g. 9876543210"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-teal-600 text-sm font-medium"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Email (Optional)</label>
-              <div className="relative">
-                <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="email"
-                  placeholder="accounts@restaurant.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-teal-600 text-sm"
-                />
-              </div>
+          {/* Phone Number */}
+          <div>
+            <label className="block font-bold text-slate-800 mb-1.5 text-xs sm:text-sm">
+              Phone Number <span className="text-rose-500 font-bold">*</span>
+            </label>
+            <div className="relative">
+              <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="tel"
+                required
+                placeholder="e.g. 9876543210"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="w-full pl-10 pr-3.5 py-2.5 rounded-2xl border border-slate-200 bg-white focus:outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 text-xs sm:text-sm font-medium text-slate-800 placeholder:text-slate-400 shadow-2xs transition-all"
+              />
             </div>
           </div>
 
-          {/* Delivery / Physical Address */}
+          {/* Email (Optional) */}
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">
-              {gstEnabled ? 'Delivery / Store Location Address' : 'Address'} <span className="text-rose-500">*</span>
+            <label className="block font-bold text-slate-800 mb-1.5 text-xs sm:text-sm">Email (Optional)</label>
+            <div className="relative">
+              <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="email"
+                placeholder="accounts@restaurant.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full pl-10 pr-3.5 py-2.5 rounded-2xl border border-slate-200 bg-white focus:outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 text-xs sm:text-sm font-medium text-slate-800 placeholder:text-slate-400 shadow-2xs transition-all"
+              />
+            </div>
+          </div>
+
+          {/* Address */}
+          <div>
+            <label className="block font-bold text-slate-800 mb-1.5 text-xs sm:text-sm">
+              Address <span className="text-rose-500 font-bold">*</span>
             </label>
             <div className="relative">
-              <MapPin className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-              <textarea
+              <MapPin className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+              <input
+                type="text"
                 required
-                rows={2}
                 placeholder="e.g. Sector 18, Commercial Block / Street"
                 value={address}
                 onChange={(e) => {
@@ -338,65 +249,140 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
                     setBillingAddress(e.target.value);
                   }
                 }}
-                className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-teal-600 text-xs"
+                className="w-full pl-10 pr-3.5 py-2.5 rounded-2xl border border-slate-200 bg-white focus:outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 text-xs sm:text-sm font-medium text-slate-800 placeholder:text-slate-400 shadow-2xs transition-all"
               />
             </div>
           </div>
 
-          {/* Contact Person */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Contact Person / Manager</label>
-              <input
-                type="text"
-                placeholder="e.g. Vikram / Manager"
-                value={contactPerson}
-                onChange={(e) => setContactPerson(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-teal-600 text-xs"
-              />
-            </div>
+          {/* Contact Person / Manager */}
+          <div>
+            <label className="block font-bold text-slate-800 mb-1.5 text-xs sm:text-sm">Contact Person / Manager</label>
+            <input
+              type="text"
+              placeholder="e.g. Vikram / Manager"
+              value={contactPerson}
+              onChange={(e) => setContactPerson(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-2xl border border-slate-200 bg-white focus:outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 text-xs sm:text-sm font-medium text-slate-800 placeholder:text-slate-400 shadow-2xs transition-all"
+            />
+          </div>
 
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Status</label>
+          {/* Status Select */}
+          <div>
+            <label className="block font-bold text-slate-800 mb-1.5 text-xs sm:text-sm">Status</label>
+            <div className="relative">
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as Customer['status'])}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-teal-600 text-xs font-semibold bg-white"
+                className="w-full appearance-none px-3.5 py-2.5 pr-10 rounded-2xl border border-slate-200 bg-white focus:outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 text-xs sm:text-sm font-semibold text-slate-800 cursor-pointer shadow-2xs transition-all"
               >
                 <option value="active">Active Customer</option>
                 <option value="due_soon">Refill Due Soon</option>
                 <option value="overdue">Refill Overdue</option>
                 <option value="lost">Inactive / Lost</option>
               </select>
+              <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
           </div>
 
-          {/* Internal Notes */}
-          <div>
-            <label className="block font-semibold text-slate-700 mb-1">Notes & Preferences</label>
-            <textarea
-              rows={2}
-              placeholder="e.g. Dispenser refill preferences, delivery timings..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-teal-600 text-xs"
-            />
-          </div>
+          {/* Conditional GST Information Section when GST is ON */}
+          {gstEnabled && (
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3.5 animate-in fade-in duration-200">
+              <div className="flex items-center gap-1.5 text-emerald-800 font-extrabold text-xs pb-1 border-b border-slate-200/60">
+                <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                <span>GST Registration & Legal Billing Coordinates</span>
+              </div>
 
-          {/* Action Buttons */}
+              {/* Legal Business Name */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1 text-xs">
+                  Legal / Business Name <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required={gstEnabled}
+                  placeholder="e.g. MSTORE PRIVATE LIMITED"
+                  value={legalName}
+                  onChange={(e) => setLegalName(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-emerald-600 text-xs font-semibold"
+                />
+              </div>
+
+              {/* GSTIN */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1 text-xs">
+                  GSTIN (15-digit Tax Identification) <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required={gstEnabled}
+                  placeholder="e.g. 32ABZFM4622N1ZN"
+                  value={gstin}
+                  onChange={(e) => setGstin(e.target.value.toUpperCase())}
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-emerald-600 text-xs font-mono uppercase font-bold text-emerald-900"
+                />
+              </div>
+
+              {/* Billing Address */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1 text-xs">
+                  Billing Address <span className="text-rose-500">*</span>
+                </label>
+                <textarea
+                  required={gstEnabled}
+                  rows={2}
+                  placeholder="e.g. APTA COWORKS, Building No. 61A, Kuzhippuram Vengara Road, Kottapparambu"
+                  value={billingAddress}
+                  onChange={(e) => setBillingAddress(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-emerald-600 text-xs"
+                />
+              </div>
+
+              {/* State and State Code */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1 text-xs">
+                    State <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required={gstEnabled}
+                    placeholder="Kerala"
+                    value={state}
+                    onChange={(e) => setState(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-emerald-600 text-xs font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1 text-xs">
+                    State Code <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required={gstEnabled}
+                    placeholder="32"
+                    value={stateCode}
+                    onChange={(e) => setStateCode(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-emerald-600 text-xs font-mono font-medium"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Form Submit & Action buttons */}
           <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold cursor-pointer"
+              className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 font-bold cursor-pointer transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-5 py-2.5 rounded-xl bg-teal-700 hover:bg-teal-800 active:scale-98 text-white font-bold shadow-md shadow-teal-700/20 cursor-pointer"
+              className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-extrabold shadow-md shadow-emerald-600/20 cursor-pointer transition-all"
             >
               {isSubmitting ? 'Saving...' : customerToEdit ? 'Update Profile' : 'Save Customer'}
             </button>
@@ -406,3 +392,4 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
     </div>
   );
 };
+
