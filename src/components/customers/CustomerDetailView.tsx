@@ -21,7 +21,25 @@ import { formatCurrency, formatDate } from '../../lib/dateUtils';
 import { downloadInvoicePDF } from '../../lib/pdfGenerator';
 import { CustomerFormModal } from './CustomerFormModal';
 import { MarkAsLostModal } from './MarkAsLostModal';
-import { Sale } from '../../types';
+import { Customer, Sale } from '../../types';
+
+const DUMMY_CUSTOMER: Customer = {
+  id: '',
+  restaurantName: 'Customer',
+  phone: '',
+  address: '',
+  gstEnabled: false,
+  status: 'active',
+  totalInvoicedSales: 0,
+  totalPaid: 0,
+  totalPending: 0,
+  totalProfit: 0,
+  totalHandwashPurchased: 0,
+  totalTissuePurchased: 0,
+  dispensersCount: 0,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
 
 interface CustomerDetailViewProps {
   customerId?: string;
@@ -104,57 +122,59 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
     return null;
   }, [customers, targetCustomerId, selectedCustomerId]);
 
+  const currentCustomer = customer || DUMMY_CUSTOMER;
+
   // Customer sales (matched by ID, _id, or restaurant/legal name)
   const customerSales = useMemo(() => {
-    if (!customer) return [];
-    const custId = customer.id;
-    const custIdAlt = (customer as any)._id;
-    const restName = customer.restaurantName ? customer.restaurantName.trim().toLowerCase() : '';
-    const legalName = customer.legalName ? customer.legalName.trim().toLowerCase() : '';
+    if (!currentCustomer.id && !currentCustomer.restaurantName) return [];
+    const custId = currentCustomer.id;
+    const custIdAlt = (currentCustomer as any)._id;
+    const restName = currentCustomer.restaurantName ? currentCustomer.restaurantName.trim().toLowerCase() : '';
+    const legalName = currentCustomer.legalName ? currentCustomer.legalName.trim().toLowerCase() : '';
 
     return sales.filter(s => {
       if (s.customerId && (s.customerId === custId || (custIdAlt && s.customerId === custIdAlt))) return true;
       if (s.customerName) {
         const sName = s.customerName.trim().toLowerCase();
-        if (restName && (sName === restName || sName.includes(restName) || restName.includes(sName))) return true;
+        if (restName && restName !== 'customer' && (sName === restName || sName.includes(restName) || restName.includes(sName))) return true;
         if (legalName && (sName === legalName || sName.includes(legalName) || legalName.includes(sName))) return true;
       }
       return false;
     });
-  }, [sales, customer]);
+  }, [sales, currentCustomer]);
 
   // Customer dispensers & replacements for fitting cost calculation
   const customerDispensers = useMemo(() => {
-    if (!customer) return [];
-    const custId = customer.id;
-    const custIdAlt = (customer as any)._id;
-    const restName = customer.restaurantName ? customer.restaurantName.trim().toLowerCase() : '';
+    if (!currentCustomer.id && !currentCustomer.restaurantName) return [];
+    const custId = currentCustomer.id;
+    const custIdAlt = (currentCustomer as any)._id;
+    const restName = currentCustomer.restaurantName ? currentCustomer.restaurantName.trim().toLowerCase() : '';
 
     return dispensers.filter(d => {
       if (d.customerId && (d.customerId === custId || (custIdAlt && d.customerId === custIdAlt))) return true;
       if (d.customerName) {
         const dName = d.customerName.trim().toLowerCase();
-        if (restName && (dName === restName || dName.includes(restName) || restName.includes(dName))) return true;
+        if (restName && restName !== 'customer' && (dName === restName || dName.includes(restName) || restName.includes(dName))) return true;
       }
       return false;
     });
-  }, [dispensers, customer]);
+  }, [dispensers, currentCustomer]);
 
   const customerReplacements = useMemo(() => {
-    if (!customer) return [];
-    const custId = customer.id;
-    const custIdAlt = (customer as any)._id;
-    const restName = customer.restaurantName ? customer.restaurantName.trim().toLowerCase() : '';
+    if (!currentCustomer.id && !currentCustomer.restaurantName) return [];
+    const custId = currentCustomer.id;
+    const custIdAlt = (currentCustomer as any)._id;
+    const restName = currentCustomer.restaurantName ? currentCustomer.restaurantName.trim().toLowerCase() : '';
 
     return dispenserReplacements.filter(r => {
       if (r.customerId && (r.customerId === custId || (custIdAlt && r.customerId === custIdAlt))) return true;
       if (r.customerName) {
         const rName = r.customerName.trim().toLowerCase();
-        if (restName && (rName === restName || rName.includes(restName) || restName.includes(rName))) return true;
+        if (restName && restName !== 'customer' && (rName === restName || rName.includes(restName) || restName.includes(rName))) return true;
       }
       return false;
     });
-  }, [dispenserReplacements, customer]);
+  }, [dispenserReplacements, currentCustomer]);
 
   // Financial summary metrics
   const totalSalesVal = useMemo(() => {
@@ -162,24 +182,24 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
     if (validSales.length > 0) {
       return validSales.reduce((sum, s) => sum + (s.invoiceTotal || 0), 0);
     }
-    return customer?.totalInvoicedSales || 0;
-  }, [customerSales, customer]);
+    return currentCustomer.totalInvoicedSales || 0;
+  }, [customerSales, currentCustomer]);
 
   const totalReceivedVal = useMemo(() => {
     const validSales = customerSales.filter(s => s.paymentStatus !== 'cancelled');
     if (validSales.length > 0) {
       return validSales.reduce((sum, s) => sum + (s.paidAmount || 0), 0);
     }
-    return customer?.totalPaid || 0;
-  }, [customerSales, customer]);
+    return currentCustomer.totalPaid || 0;
+  }, [customerSales, currentCustomer]);
 
   const totalPendingVal = useMemo(() => {
     const validSales = customerSales.filter(s => s.paymentStatus !== 'cancelled');
     if (validSales.length > 0) {
       return validSales.reduce((sum, s) => sum + (s.pendingAmount || 0), 0);
     }
-    return customer?.totalPending || 0;
-  }, [customerSales, customer]);
+    return currentCustomer.totalPending || 0;
+  }, [customerSales, currentCustomer]);
 
   // Total Fitting Cost calculation
   const totalFittingCost = useMemo(() => {
@@ -193,27 +213,6 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
     }, 0);
     return dispensersCost + replacementsCost;
   }, [customerDispensers, customerReplacements]);
-
-  if (!customer) {
-    if (isLoading) {
-      return (
-        <div className="p-12 text-center bg-white rounded-2xl border border-slate-200 shadow-2xs">
-          <div className="w-8 h-8 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-slate-500 text-xs font-semibold">Loading customer profile...</p>
-        </div>
-      );
-    }
-
-    return (
-      <div className="p-8 text-center bg-white rounded-2xl border border-slate-200">
-        <p className="text-slate-500 font-bold mb-1">Customer record not found.</p>
-        <p className="text-slate-400 text-xs mb-4">The requested customer record could not be located in your directory.</p>
-        <button onClick={onBack} className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors">
-          ← Back to Customer List
-        </button>
-      </div>
-    );
-  }
 
   const handleToggleExpandSale = (saleId: string) => {
     setExpandedSaleIds(prev => {
@@ -230,11 +229,11 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
   const handleDownloadInvoice = (e: React.MouseEvent, sale: Sale) => {
     e.stopPropagation();
     const items = saleItems.filter(si => si.saleId === sale.id);
-    downloadInvoicePDF(sale, items, customer, settings);
+    downloadInvoicePDF(sale, items, currentCustomer, settings);
   };
 
   const handleReactivate = async () => {
-    await updateCustomer(customer.id, { status: 'active' });
+    await updateCustomer(currentCustomer.id, { status: 'active' });
   };
 
   // Format initials for profile avatar
@@ -330,16 +329,16 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
           <div className="flex items-start gap-4">
             {/* Avatar Initials */}
             <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-[#dcfce7] text-[#059669] font-black text-xl sm:text-2xl flex items-center justify-center shrink-0 border border-emerald-200/50">
-              {getInitials(customer.restaurantName)}
+              {getInitials(currentCustomer.restaurantName)}
             </div>
 
             {/* Name & Subtitle/Phone */}
             <div className="pt-0.5">
               <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight capitalize">
-                {customer.restaurantName}
+                {currentCustomer.restaurantName}
               </h1>
               <p className="text-sm text-slate-400 font-medium mt-0.5">
-                {customer.phone || customer.id || '123456678'}
+                {currentCustomer.phone || currentCustomer.id || '123456678'}
               </p>
             </div>
           </div>
@@ -348,17 +347,17 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
           <div className="flex items-center gap-3 pt-0.5">
             {/* ACTIVE Badge */}
             <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 ${
-              customer.status === 'active' || !customer.status
+              currentCustomer.status === 'active' || !currentCustomer.status
                 ? 'bg-[#dcfce7] text-[#16a34a]'
-                : customer.status === 'lost'
+                : currentCustomer.status === 'lost'
                 ? 'bg-rose-100 text-rose-700'
                 : 'bg-amber-100 text-amber-700'
             }`}>
-              <span>{customer.status || 'ACTIVE'}</span>
+              <span>{currentCustomer.status || 'ACTIVE'}</span>
               <span className={`w-2 h-2 rounded-full ${
-                customer.status === 'active' || !customer.status
+                currentCustomer.status === 'active' || !currentCustomer.status
                   ? 'bg-[#16a34a]'
-                  : customer.status === 'lost'
+                  : currentCustomer.status === 'lost'
                   ? 'bg-rose-600'
                   : 'bg-amber-600'
               }`} />
@@ -380,7 +379,7 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
 
         {/* Two Action Buttons */}
         <div className="grid grid-cols-2 gap-3 sm:gap-4">
-          {customer.status === 'lost' ? (
+          {currentCustomer.status === 'lost' ? (
             <button
               onClick={handleReactivate}
               className="py-3 px-4 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 text-sm font-bold transition-colors cursor-pointer text-center"
@@ -466,9 +465,9 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 text-xs">
           <div>
             <span className="text-slate-400 font-bold uppercase text-[10px] tracking-wider block mb-1">Customer Name</span>
-            <div className="font-extrabold text-sm text-slate-900">{customer.restaurantName}</div>
-            {customer.legalName && (
-              <div className="text-slate-500 text-[11px] mt-0.5 font-medium">Legal: {customer.legalName}</div>
+            <div className="font-extrabold text-sm text-slate-900">{currentCustomer.restaurantName}</div>
+            {currentCustomer.legalName && (
+              <div className="text-slate-500 text-[11px] mt-0.5 font-medium">Legal: {currentCustomer.legalName}</div>
             )}
           </div>
 
@@ -476,8 +475,8 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
             <span className="text-slate-400 font-bold uppercase text-[10px] tracking-wider block mb-1">Phone Number</span>
             <div className="font-extrabold text-slate-900 flex items-center gap-1.5">
               <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-              <a href={`tel:${customer.phone}`} className="hover:text-emerald-600 transition-colors">
-                {customer.phone || 'N/A'}
+              <a href={`tel:${currentCustomer.phone}`} className="hover:text-emerald-600 transition-colors">
+                {currentCustomer.phone || 'N/A'}
               </a>
             </div>
           </div>
@@ -486,14 +485,14 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
             <span className="text-slate-400 font-bold uppercase text-[10px] tracking-wider block mb-1">Email Address</span>
             <div className="font-semibold text-slate-800 flex items-center gap-1.5">
               <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-              <span>{customer.email || 'N/A'}</span>
+              <span>{currentCustomer.email || 'N/A'}</span>
             </div>
           </div>
 
           <div>
             <span className="text-slate-400 font-bold uppercase text-[10px] tracking-wider block mb-1">GSTIN</span>
             <div className="font-extrabold text-slate-900 font-mono">
-              {customer.gstin || (customer.gstEnabled ? 'Active (Pending No.)' : 'N/A')}
+              {currentCustomer.gstin || (currentCustomer.gstEnabled ? 'Active (Pending No.)' : 'N/A')}
             </div>
           </div>
 
@@ -501,7 +500,7 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
             <span className="text-slate-400 font-bold uppercase text-[10px] tracking-wider block mb-1">Address</span>
             <div className="font-semibold text-slate-800 flex items-start gap-1.5">
               <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
-              <span>{customer.address || customer.billingAddress || 'N/A'}</span>
+              <span>{currentCustomer.address || currentCustomer.billingAddress || 'N/A'}</span>
             </div>
           </div>
 
@@ -509,15 +508,15 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
             <span className="text-slate-400 font-bold uppercase text-[10px] tracking-wider block mb-1">Customer Since</span>
             <div className="font-semibold text-slate-800 flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-              <span>{formatDate(customer.createdAt)}</span>
+              <span>{formatDate(currentCustomer.createdAt)}</span>
             </div>
           </div>
 
           <div>
             <span className="text-slate-400 font-bold uppercase text-[10px] tracking-wider block mb-1">Account Status</span>
             <div className="flex items-center gap-2 mt-0.5">
-              <span className={`w-2.5 h-2.5 rounded-full ${customer.status === 'active' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-              <span className="font-bold text-slate-800 capitalize text-xs">{customer.status}</span>
+              <span className={`w-2.5 h-2.5 rounded-full ${currentCustomer.status === 'active' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+              <span className="font-bold text-slate-800 capitalize text-xs">{currentCustomer.status}</span>
             </div>
           </div>
         </div>
@@ -735,17 +734,18 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
       <CustomerFormModal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
-        customerToEdit={customer}
+        customerToEdit={currentCustomer}
       />
 
       {/* Mark As Lost Modal */}
       <MarkAsLostModal
         isOpen={isLostModalOpen}
         onClose={() => setIsLostModalOpen(false)}
-        customer={customer}
+        customer={currentCustomer}
       />
     </div>
   );
 };
+
 
 
