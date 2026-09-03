@@ -447,7 +447,7 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
         <div className="space-y-4">
           {/* 1. CUSTOMER NAME */}
           <div className="space-y-1">
-            <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider block">
+            <span className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider block">
               Customer Name
             </span>
             <div className="font-extrabold text-base text-slate-900">
@@ -462,7 +462,7 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
 
           {/* 2. PHONE NUMBER */}
           <div className="space-y-1">
-            <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider block">
+            <span className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider block">
               Phone Number
             </span>
             <div className="font-extrabold text-sm sm:text-base text-slate-900 flex items-center gap-2">
@@ -475,7 +475,7 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
 
           {/* 3. EMAIL ADDRESS */}
           <div className="space-y-1">
-            <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider block">
+            <span className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider block">
               Email Address
             </span>
             <div className="font-semibold text-sm text-slate-800 flex items-center gap-2">
@@ -484,19 +484,9 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
             </div>
           </div>
 
-          {/* 4. GSTIN */}
+          {/* 4. ADDRESS */}
           <div className="space-y-1">
-            <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider block">
-              GSTIN
-            </span>
-            <div className="font-extrabold text-sm text-slate-900">
-              {currentCustomer.gstin || (currentCustomer.gstEnabled ? 'Active (Pending No.)' : 'N/A')}
-            </div>
-          </div>
-
-          {/* 5. ADDRESS */}
-          <div className="space-y-1">
-            <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider block">
+            <span className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider block">
               Address
             </span>
             <div className="font-semibold text-sm text-slate-800 flex items-start gap-2 leading-relaxed">
@@ -505,9 +495,19 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
             </div>
           </div>
 
+          {/* 5. GSTIN */}
+          <div className="space-y-1">
+            <span className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider block">
+              GSTIN
+            </span>
+            <div className="font-extrabold text-sm text-slate-900">
+              {currentCustomer.gstin || (currentCustomer.gstEnabled ? 'Active (Pending No.)' : 'N/A')}
+            </div>
+          </div>
+
           {/* 6. CUSTOMER SINCE */}
           <div className="space-y-1">
-            <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider block">
+            <span className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider block">
               Customer Since
             </span>
             <div className="font-semibold text-sm text-slate-800 flex items-center gap-2">
@@ -576,7 +576,7 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
                     </div>
 
                     {/* 3. Financials (Total, Paid in green, Pending in red) */}
-                    <div className="flex items-center gap-3.5 text-xs">
+                    <div className="flex items-center gap-6 text-xs">
                       <div>
                         <span className="text-[9px] uppercase font-bold text-slate-400 block leading-none">Total</span>
                         <span className="font-extrabold text-slate-900 text-xs">

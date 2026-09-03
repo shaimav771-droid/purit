@@ -11,9 +11,11 @@ import {
   Search,
   Check,
   X,
-  ChevronRight
+  ChevronRight,
+  Calendar
 } from 'lucide-react';
 import { formatCurrency } from '../../lib/dateUtils';
+import { getCustomerCanonicalKey } from '../../lib/activityUtils';
 
 const getInitials = (name: string): string => {
   if (!name) return 'CU';
@@ -22,6 +24,70 @@ const getInitials = (name: string): string => {
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   }
   return name.slice(0, 2).toUpperCase();
+};
+
+const formatLastVisitDate = (dateStr?: string | null): string => {
+  if (!dateStr) return 'No Visits';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    const day = String(d.getDate()).padStart(2, '0');
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const month = monthNames[d.getMonth()];
+    const year = d.getFullYear();
+    return `${day}-${month}-${year}`;
+  } catch {
+    return dateStr;
+  }
+};
+
+const getRelativeVisitTime = (visitDateStr?: string | null) => {
+  if (!visitDateStr) {
+    return { relativeStr: 'No record', daysElapsed: null, isRedAlert: false };
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const visitDate = new Date(visitDateStr);
+  visitDate.setHours(0, 0, 0, 0);
+
+  if (isNaN(visitDate.getTime())) {
+    return { relativeStr: 'Invalid date', daysElapsed: null, isRedAlert: false };
+  }
+
+  const diffTime = today.getTime() - visitDate.getTime();
+  const daysElapsed = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+  // Red Alert Logic: If last visit was 7 days or more ago (>= 1 week)
+  const isRedAlert = daysElapsed >= 7;
+
+  let relativeStr = '';
+  if (daysElapsed < 0) {
+    const absDays = Math.abs(daysElapsed);
+    if (absDays === 1) relativeStr = 'In 1 day';
+    else if (absDays < 7) relativeStr = `In ${absDays} days`;
+    else if (absDays < 14) relativeStr = 'In 1 week';
+    else relativeStr = `In ${Math.floor(absDays / 7)} weeks`;
+  } else if (daysElapsed === 0) {
+    relativeStr = 'Today';
+  } else if (daysElapsed === 1) {
+    relativeStr = '1 day ago';
+  } else if (daysElapsed < 7) {
+    relativeStr = `${daysElapsed} days ago`;
+  } else if (daysElapsed < 14) {
+    relativeStr = '1 week ago';
+  } else if (daysElapsed < 30) {
+    const weeks = Math.floor(daysElapsed / 7);
+    relativeStr = `${weeks} weeks ago`;
+  } else if (daysElapsed < 60) {
+    relativeStr = '1 month ago';
+  } else {
+    const months = Math.floor(daysElapsed / 30);
+    relativeStr = `${months} months ago`;
+  }
+
+  return { relativeStr, daysElapsed, isRedAlert };
 };
 
 const sortLabels: Record<'latest_date' | 'highest_sales' | 'highest_pending' | 'most_overdue', string> = {
@@ -34,6 +100,7 @@ const sortLabels: Record<'latest_date' | 'highest_sales' | 'highest_pending' | '
 export const CustomersView: React.FC = () => {
   const {
     customers,
+    activities,
     selectedCustomerId,
     setSelectedCustomerId,
     settings,
@@ -42,10 +109,32 @@ export const CustomersView: React.FC = () => {
     isAddCustomerModalOpen,
     setIsAddCustomerModalOpen,
     customerRepurchaseMap,
+    customerFilterTab: activeFilterTab,
+    setCustomerFilterTab: setActiveFilterTab,
   } = useApp();
 
-  const [activeFilterTab, setActiveFilterTab] = useState<'all' | 'active' | 'overdue' | 'due_soon' | 'lost'>('all');
-  const [sortBy, setSortBy] = useState<'latest_date' | 'highest_sales' | 'highest_pending' | 'most_overdue'>('latest_date');
+  const [sortBy, setSortByState] = useState<'latest_date' | 'highest_sales' | 'highest_pending' | 'most_overdue'>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = sessionStorage.getItem('purit_customer_sort_by') || localStorage.getItem('purit_customer_sort_by');
+        if (saved && ['latest_date', 'highest_sales', 'highest_pending', 'most_overdue'].includes(saved)) {
+          return saved as any;
+        }
+      } catch {}
+    }
+    return 'latest_date';
+  });
+
+  const setSortBy = (val: 'latest_date' | 'highest_sales' | 'highest_pending' | 'most_overdue') => {
+    setSortByState(val);
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.setItem('purit_customer_sort_by', val);
+        localStorage.setItem('purit_customer_sort_by', val);
+      } catch {}
+    }
+  };
+
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
   const [isSortSubmenuOpen, setIsSortSubmenuOpen] = useState<boolean>(false);
 
@@ -408,87 +497,149 @@ export const CustomersView: React.FC = () => {
         <div className="flex flex-col gap-3">
           {filteredCustomers.map((customer) => {
             const customerId = customer.id || (customer as any)._id || customer.restaurantName;
+
+            // 1. Dynamic Data Fetching: Find completed or scheduled Operational Visits for this customer
+            const customerActivities = (activities || []).filter(act => {
+              if (!act) return false;
+              if (act.customerId && (act.customerId === customerId || act.customerId === customer.id)) {
+                return true;
+              }
+              const canonical = getCustomerCanonicalKey(act.customerId, act.customerName, customers);
+              return canonical.id === customerId;
+            });
+
+            // Dynamically compute the most recent visit date ("Last Visit") for that customer
+            let lastVisitDateStr: string | null = null;
+            if (customerActivities.length > 0) {
+              let maxTime = -Infinity;
+              customerActivities.forEach(act => {
+                const dateStr = act.completedAt
+                  ? act.completedAt.split('T')[0]
+                  : act.dueDate
+                  ? act.dueDate.split('T')[0]
+                  : act.createdAt
+                  ? act.createdAt.split('T')[0]
+                  : null;
+                
+                if (dateStr) {
+                  const t = new Date(dateStr).getTime();
+                  if (!isNaN(t) && t > maxTime) {
+                    maxTime = t;
+                    lastVisitDateStr = dateStr;
+                  }
+                }
+              });
+            }
+
+            // Relative elapsed time and red alert logic (>= 7 days ago)
+            const { relativeStr, isRedAlert } = getRelativeVisitTime(lastVisitDateStr);
+            const lastVisitFormatted = formatLastVisitDate(lastVisitDateStr);
+
             return (
               <div
                 key={customerId}
                 onClick={() => handleSelectCustomer(customer)}
-                className="bg-white rounded-2xl border border-slate-200/90 p-3.5 sm:p-4 shadow-2xs hover:shadow-md hover:border-emerald-400/80 transition-all cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-3.5 sm:gap-4 group min-w-0"
+                className={`rounded-2xl border p-3.5 sm:p-4 shadow-2xs hover:shadow-md transition-all cursor-pointer flex flex-col gap-3 group min-w-0 ${
+                  isRedAlert
+                    ? 'bg-red-50/20 border-red-300 hover:border-red-400 hover:bg-red-50/30'
+                    : 'bg-white border-slate-200/90 hover:border-emerald-400/80'
+                }`}
               >
-                {/* Header Container for Mobile (Top-Right View Profile) / unrolls via md:contents on Desktop */}
-                <div className="flex items-start sm:items-center justify-between w-full md:contents gap-2">
-                  {/* Left Section: Initials Avatar + Customer Info */}
-                  <div className="flex items-center gap-3.5 min-w-0 md:w-1/3">
-                    {/* Circular Initials Avatar */}
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-emerald-100/80 text-emerald-800 font-extrabold text-xs sm:text-base flex items-center justify-center shrink-0 border border-emerald-200/60 shadow-2xs group-hover:bg-emerald-600 group-hover:text-white transition-colors">
-                      {getInitials(customer.restaurantName)}
+                {/* Main Card Content */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3.5 sm:gap-4">
+                  {/* Header Container for Mobile (Top-Right View Profile) / unrolls via md:contents on Desktop */}
+                  <div className="flex items-start sm:items-center justify-between w-full md:contents gap-2">
+                    {/* Left Section: Initials Avatar + Customer Info */}
+                    <div className="flex items-center gap-3.5 min-w-0 md:w-1/3">
+                      {/* Circular Initials Avatar */}
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-emerald-100/80 text-emerald-800 font-extrabold text-xs sm:text-base flex items-center justify-center shrink-0 border border-emerald-200/60 shadow-2xs group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                        {getInitials(customer.restaurantName)}
+                      </div>
+
+                      {/* Customer Name, Status Badge & Phone Number */}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="font-extrabold text-sm sm:text-base text-slate-900 group-hover:text-emerald-600 transition-colors truncate">
+                            {customer.restaurantName}
+                          </h3>
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider shrink-0 border ${
+                              customer.status === 'active' || !customer.status
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : customer.status === 'lost'
+                                ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                : 'bg-amber-50 text-amber-700 border-amber-200'
+                            }`}
+                          >
+                            {customer.status === 'due_soon' ? 'DUE SOON' : (customer.status || 'ACTIVE')}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 mt-1 text-xs text-slate-500 font-medium">
+                          <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          <span className="truncate">{customer.phone || 'No phone'}</span>
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Customer Name, Status Badge & Phone Number */}
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-extrabold text-sm sm:text-base text-slate-900 group-hover:text-emerald-600 transition-colors truncate">
-                          {customer.restaurantName}
-                        </h3>
-                        <span
-                          className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider shrink-0 border ${
-                            customer.status === 'active' || !customer.status
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                              : customer.status === 'lost'
-                              ? 'bg-rose-50 text-rose-700 border-rose-200'
-                              : 'bg-amber-50 text-amber-700 border-amber-200'
-                          }`}
-                        >
-                          {customer.status === 'due_soon' ? 'DUE SOON' : (customer.status || 'ACTIVE')}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-1.5 mt-1 text-xs text-slate-500 font-medium">
-                        <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        <span className="truncate">{customer.phone || 'No phone'}</span>
-                      </div>
+                    {/* Right Section: View Profile -> link & Three-dots menu icon */}
+                    <div className="flex items-center gap-2 sm:gap-3 shrink-0 md:order-last">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSelectCustomer(customer);
+                        }}
+                        className="inline-flex items-center gap-1 text-emerald-600 hover:text-emerald-700 font-bold text-xs sm:text-sm transition-colors cursor-pointer group-hover:translate-x-0.5 transition-transform"
+                      >
+                        <span>View Profile</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
 
-                  {/* Right Section: View Profile -> link & Three-dots menu icon */}
-                  <div className="flex items-center gap-2 sm:gap-3 shrink-0 md:order-last">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleSelectCustomer(customer);
-                      }}
-                      className="inline-flex items-center gap-1 text-emerald-600 hover:text-emerald-700 font-bold text-xs sm:text-sm transition-colors cursor-pointer group-hover:translate-x-0.5 transition-transform"
-                    >
-                      <span>View Profile</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
+                  {/* Middle Section: 3 distinct individual stats sub-cards side-by-side */}
+                  <div className="grid grid-cols-3 gap-1.5 sm:gap-2.5 w-full md:w-auto md:flex-1 max-w-full md:max-w-md">
+                    {/* Card 1: TOTAL SALES */}
+                    <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-2 sm:p-2.5 text-center flex flex-col justify-center min-w-0 shadow-2xs">
+                      <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-wider truncate">TOTAL SALES</span>
+                      <span className="text-xs sm:text-sm font-black text-slate-900 mt-0.5 truncate" title={formatCurrency(customer.totalInvoicedSales || 0, settings.currency)}>
+                        {formatCurrency(customer.totalInvoicedSales || 0, settings.currency)}
+                      </span>
+                    </div>
+
+                    {/* Card 2: RECEIVED */}
+                    <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-2 sm:p-2.5 text-center flex flex-col justify-center min-w-0 shadow-2xs">
+                      <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-wider truncate">RECEIVED</span>
+                      <span className="text-xs sm:text-sm font-black text-emerald-600 mt-0.5 truncate" title={formatCurrency(customer.totalPaid || 0, settings.currency)}>
+                        {formatCurrency(customer.totalPaid || 0, settings.currency)}
+                      </span>
+                    </div>
+
+                    {/* Card 3: PENDING */}
+                    <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-2 sm:p-2.5 text-center flex flex-col justify-center min-w-0 shadow-2xs">
+                      <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-wider truncate">PENDING</span>
+                      <span className="text-xs sm:text-sm font-black text-rose-600 mt-0.5 truncate" title={formatCurrency(customer.totalPending || 0, settings.currency)}>
+                        {formatCurrency(customer.totalPending || 0, settings.currency)}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                {/* Middle Section: 3 distinct individual stats sub-cards side-by-side */}
-                <div className="grid grid-cols-3 gap-1.5 sm:gap-2.5 w-full md:w-auto md:flex-1 max-w-full md:max-w-md">
-                  {/* Card 1: TOTAL SALES */}
-                  <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-2 sm:p-2.5 text-center flex flex-col justify-center min-w-0 shadow-2xs">
-                    <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-wider truncate">TOTAL SALES</span>
-                    <span className="text-xs sm:text-sm font-black text-slate-900 mt-0.5 truncate" title={formatCurrency(customer.totalInvoicedSales || 0, settings.currency)}>
-                      {formatCurrency(customer.totalInvoicedSales || 0, settings.currency)}
+                {/* Card Footer UI Row */}
+                <div className={`pt-2.5 border-t ${isRedAlert ? 'border-red-200/70' : 'border-slate-100'} flex items-center justify-between text-xs font-semibold`}>
+                  <div className="flex items-center gap-1.5 text-slate-500">
+                    <Calendar className={`w-3.5 h-3.5 ${isRedAlert ? 'text-red-500' : 'text-slate-400'}`} />
+                    <span>
+                      Last Visit: <strong className={isRedAlert ? 'text-red-900 font-bold' : 'text-slate-700 font-bold'}>{lastVisitFormatted}</strong>
                     </span>
                   </div>
-
-                  {/* Card 2: RECEIVED */}
-                  <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-2 sm:p-2.5 text-center flex flex-col justify-center min-w-0 shadow-2xs">
-                    <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-wider truncate">RECEIVED</span>
-                    <span className="text-xs sm:text-sm font-black text-emerald-600 mt-0.5 truncate" title={formatCurrency(customer.totalPaid || 0, settings.currency)}>
-                      {formatCurrency(customer.totalPaid || 0, settings.currency)}
-                    </span>
-                  </div>
-
-                  {/* Card 3: PENDING */}
-                  <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-2 sm:p-2.5 text-center flex flex-col justify-center min-w-0 shadow-2xs">
-                    <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-wider truncate">PENDING</span>
-                    <span className="text-xs sm:text-sm font-black text-rose-600 mt-0.5 truncate" title={formatCurrency(customer.totalPending || 0, settings.currency)}>
-                      {formatCurrency(customer.totalPending || 0, settings.currency)}
-                    </span>
+                  <div className={`px-2.5 py-0.5 rounded-md text-[11px] font-extrabold tracking-tight ${
+                    isRedAlert
+                      ? 'bg-red-100 text-red-700 border border-red-200/80 shadow-2xs'
+                      : 'bg-slate-100 text-slate-600 border border-slate-200/50'
+                  }`}>
+                    {relativeStr}
                   </div>
                 </div>
               </div>
@@ -510,6 +661,9 @@ export const CustomersView: React.FC = () => {
     </div>
   );
 };
+
+export const CustomerDirectory = CustomersView;
+
 
 
 

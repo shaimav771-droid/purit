@@ -92,6 +92,8 @@ interface AppContextType {
   activeDateRange: DateRange;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
+  customerFilterTab: 'all' | 'active' | 'overdue' | 'due_soon' | 'lost';
+  setCustomerFilterTab: (filter: 'all' | 'active' | 'overdue' | 'due_soon' | 'lost') => void;
 
   // Dashboard Protection
   isDashboardUnlocked: boolean;
@@ -335,6 +337,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     endDate: getTodayString(),
   });
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // Persistent Customer Directory Filter State
+  const [customerFilterTab, setCustomerFilterTabState] = useState<'all' | 'active' | 'overdue' | 'due_soon' | 'lost'>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const hashStr = window.location.hash;
+        if (hashStr.includes('filter=')) {
+          const match = hashStr.match(/filter=([^&]+)/);
+          if (match && match[1]) {
+            const val = decodeURIComponent(match[1]);
+            if (['all', 'active', 'overdue', 'due_soon', 'lost'].includes(val)) {
+              return val as any;
+            }
+          }
+        }
+        const saved = sessionStorage.getItem('purit_customer_filter_tab') || localStorage.getItem('purit_customer_filter_tab');
+        if (saved && ['all', 'active', 'overdue', 'due_soon', 'lost'].includes(saved)) {
+          return saved as any;
+        }
+      } catch {}
+    }
+    return 'all';
+  });
+
+  const setCustomerFilterTab = useCallback((filter: 'all' | 'active' | 'overdue' | 'due_soon' | 'lost') => {
+    setCustomerFilterTabState(filter);
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.setItem('purit_customer_filter_tab', filter);
+        localStorage.setItem('purit_customer_filter_tab', filter);
+      } catch {}
+    }
+  }, []);
 
   // Dashboard Security State (Password Protected)
   const [isDashboardUnlocked, setIsDashboardUnlocked] = useState<boolean>(false);
@@ -1768,6 +1803,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         activeDateRange,
         searchQuery,
         setSearchQuery,
+        customerFilterTab,
+        setCustomerFilterTab,
 
         isDashboardUnlocked,
         unlockDashboard,
