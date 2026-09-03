@@ -55,23 +55,14 @@ export const BottomNav: React.FC = () => {
   };
 
   const handleFabClick = () => {
-    if (activeTab === 'activities') {
-      setIsFabOpen(false);
-      setIsAddActivityModalOpen(true);
-      return;
-    }
-    if (activeTab === 'inventory') {
-      setIsFabOpen(false);
-      setIsAddProductModalOpen(true);
-      return;
-    }
-    setIsFabOpen(!isFabOpen);
+    setIsFabOpen(false);
+    setIsNewSaleModalOpen(true);
   };
 
   return (
     <>
-      {/* Floating Action Button (FAB) for Quick Entry on Mobile */}
-      <div className="md:hidden fixed bottom-20 right-4 z-40">
+      {/* Floating Action Button (FAB) for Quick Entry */}
+      <div className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-40">
         <AnimatePresence>
           {isFabOpen && (
             <>

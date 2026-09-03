@@ -19,7 +19,9 @@ import {
   Check,
   CalendarDays,
   Send,
-  Share2
+  Share2,
+  BarChart2,
+  X
 } from 'lucide-react';
 import { formatCurrency, formatDate, isDateInRange, getTodayString } from '../../lib/dateUtils';
 import { downloadInvoicePDF, shareInvoiceViaWhatsApp } from '../../lib/pdfGenerator';
@@ -49,6 +51,7 @@ export const SalesView: React.FC = () => {
 
   const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'partially_paid' | 'unpaid' | 'cancelled'>('all');
   const [selectedSaleForDetail, setSelectedSaleForDetail] = useState<Sale | null>(null);
+  const [isMetricsModalOpen, setIsMetricsModalOpen] = useState<boolean>(false);
   
   // Date & Month filter dropdown state
   const [isDateDropdownOpen, setIsDateDropdownOpen] = useState(false);
@@ -156,14 +159,22 @@ export const SalesView: React.FC = () => {
             <Receipt className="w-5 h-5 text-emerald-600" />
             Sales & Tax Invoices
           </h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Manage dispatch orders, 18% GST invoices, PDF printouts, and payment collections.
-          </p>
         </div>
 
-        {/* Controls: Date/Month Dropdown + New Invoice Button */}
+        {/* Controls: Date/Month Dropdown + Sales Metrics Summary Icon Button */}
         <div className="flex items-center gap-2 self-stretch sm:self-auto justify-between sm:justify-end">
           
+          {/* Sales Metrics Summary Icon Button (Matches Inventory Page Style) */}
+          <button
+            type="button"
+            onClick={() => setIsMetricsModalOpen(true)}
+            className="p-2 py-2 rounded-xl bg-slate-100/90 hover:bg-slate-200/80 text-slate-700 transition-all border border-slate-200 shadow-2xs flex items-center justify-center cursor-pointer shrink-0"
+            title="View Sales & Financial Metrics"
+            aria-label="View Sales & Financial Metrics"
+          >
+            <BarChart2 className="w-4 h-4 text-emerald-600" />
+          </button>
+
           {/* Date & Month Filter Dropdown */}
           <div className="relative flex-1 sm:flex-initial">
             <button
@@ -306,61 +317,6 @@ export const SalesView: React.FC = () => {
               </>
             )}
           </div>
-
-          <button
-            id="create-new-invoice-btn"
-            onClick={() => setIsNewSaleModalOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-bold text-xs shadow-sm transition-all cursor-pointer shrink-0"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>New Invoice</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Financial Overview Metrics: ONE SINGLE HORIZONTAL LINE / ROW */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-2.5 sm:p-3">
-        <div className="grid grid-cols-3 divide-x divide-slate-100">
-          
-          {/* Metric 1: Total Invoiced */}
-          <div className="px-2 sm:px-4 py-1 flex flex-col justify-center">
-            <span className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-400 block tracking-wider truncate">
-              Total Invoiced
-            </span>
-            <div className="text-sm sm:text-lg lg:text-xl font-black text-slate-900 tracking-tight leading-tight mt-0.5">
-              {formatCurrency(totalInvoiced, settings.currency)}
-            </div>
-            <span className="text-[9px] sm:text-[11px] text-slate-400 font-medium truncate mt-0.5">
-              {filteredSales.length} invoice(s)
-            </span>
-          </div>
-
-          {/* Metric 2: Collected */}
-          <div className="px-2 sm:px-4 py-1 flex flex-col justify-center">
-            <span className="text-[9px] sm:text-[10px] uppercase font-bold text-emerald-600 block tracking-wider truncate">
-              Collected
-            </span>
-            <div className="text-sm sm:text-lg lg:text-xl font-black text-emerald-700 tracking-tight leading-tight mt-0.5">
-              {formatCurrency(totalCollected, settings.currency)}
-            </div>
-            <span className="text-[9px] sm:text-[11px] text-emerald-600 font-medium truncate mt-0.5">
-              Realized cash/UPI
-            </span>
-          </div>
-
-          {/* Metric 3: Pending */}
-          <div className="px-2 sm:px-4 py-1 flex flex-col justify-center">
-            <span className="text-[9px] sm:text-[10px] uppercase font-bold text-rose-600 block tracking-wider truncate">
-              Pending
-            </span>
-            <div className="text-sm sm:text-lg lg:text-xl font-black text-rose-600 tracking-tight leading-tight mt-0.5">
-              {formatCurrency(totalPending, settings.currency)}
-            </div>
-            <span className="text-[9px] sm:text-[11px] text-rose-500 font-medium truncate mt-0.5">
-              Receivables
-            </span>
-          </div>
-
         </div>
       </div>
 
@@ -418,14 +374,14 @@ export const SalesView: React.FC = () => {
           <Receipt className="w-10 h-10 text-slate-300 mx-auto mb-3" />
           <h3 className="text-base font-bold text-slate-800">No sales invoices found</h3>
           <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-            Try adjusting your date range filter or click "+ New Invoice" to generate a sale.
+            Try adjusting your date range filter or click the bottom "+" button to generate a sale invoice.
           </p>
         </div>
       ) : (
         <div className="space-y-4">
           
-          {/* MOBILE & TABLET CARD VIEW (Visible on screens < lg, prevents horizontal scroll) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:hidden gap-3.5">
+          {/* MOBILE & TABLET CARD VIEW (Visible on screens < lg) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:hidden gap-3">
             {filteredSales.map((sale) => {
               const items = saleItems.filter(si => si.saleId === sale.id);
               const isCancelled = sale.paymentStatus === 'cancelled';
@@ -436,154 +392,90 @@ export const SalesView: React.FC = () => {
                 <div
                   key={sale.id}
                   onClick={() => setSelectedSaleForDetail(sale)}
-                  className="bg-white rounded-2xl border border-slate-200/90 hover:border-emerald-400 p-4 shadow-2xs hover:shadow-md transition-all cursor-pointer active:scale-[0.99] flex flex-col justify-between group relative overflow-hidden"
+                  className={`bg-white rounded-2xl border ${
+                    isPaid 
+                      ? 'border-l-4 border-l-emerald-500 border-slate-200/90' 
+                      : isPartial 
+                      ? 'border-l-4 border-l-amber-500 border-slate-200/90' 
+                      : isCancelled 
+                      ? 'border-l-4 border-l-slate-300 border-slate-200/90' 
+                      : 'border-l-4 border-l-rose-500 border-slate-200/90'
+                  } p-3.5 sm:p-4 shadow-2xs hover:shadow-md hover:border-emerald-400 transition-all cursor-pointer group space-y-3`}
                 >
-                  {/* Status indicator accent bar */}
-                  <div 
-                    className={`absolute top-0 left-0 right-0 h-1.5 ${
-                      isPaid 
-                        ? 'bg-emerald-500' 
-                        : isPartial 
-                        ? 'bg-amber-500' 
-                        : isCancelled 
-                        ? 'bg-slate-300' 
-                        : 'bg-rose-500'
-                    }`}
-                  />
-
-                  <div className="space-y-3">
-                    {/* Top Row: Invoice # + Date + Status Pill */}
-                    <div className="flex items-start justify-between gap-2 pt-1">
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-mono font-black text-sm text-slate-900 group-hover:text-emerald-700 transition-colors">
-                            #{sale.invoiceNumber}
-                          </span>
-                          {sale.gstEnabled ? (
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 uppercase tracking-wider">
-                              GST {sale.gstRate || 18}%
-                            </span>
-                          ) : (
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 uppercase tracking-wider">
-                              Non-GST
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1 text-[11px] text-slate-500 mt-0.5">
-                          <Calendar className="w-3 h-3 text-slate-400" />
-                          <span>{formatDate(sale.saleDate)}</span>
-                        </div>
-                      </div>
-
-                      <span
-                        className={`text-[10px] px-2.5 py-1 rounded-full font-bold uppercase tracking-wide shrink-0 ${
-                          isPaid
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : isPartial
-                            ? 'bg-amber-100 text-amber-800'
-                            : isCancelled
-                            ? 'bg-slate-200 text-slate-700 line-through'
-                            : 'bg-rose-100 text-rose-800'
-                        }`}
-                      >
-                        {sale.paymentStatus.replace('_', ' ')}
+                  {/* Header: Invoice #, Badges, Customer Name & Status Pill */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="font-mono font-black text-sm text-slate-900 group-hover:text-emerald-700 transition-colors shrink-0">
+                        #{sale.invoiceNumber}
                       </span>
+                      {sale.gstEnabled ? (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-sky-100 text-sky-800 uppercase tracking-wider shrink-0">
+                          GST {sale.gstRate || 18}%
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 uppercase tracking-wider shrink-0">
+                          NON-GST
+                        </span>
+                      )}
+                      <span className="text-slate-300 font-light text-xs shrink-0">•</span>
+                      <h3 className="font-extrabold text-sm text-slate-900 truncate">
+                        {sale.customerName}
+                      </h3>
                     </div>
 
-                    {/* Customer Info */}
-                    <div className="bg-slate-50/90 rounded-xl p-2.5 border border-slate-100 space-y-1">
-                      <div className="flex items-center gap-1.5">
-                        <Building2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                        <h4 className="font-bold text-xs text-slate-900 truncate">
-                          {sale.customerName}
-                        </h4>
-                      </div>
-                      <div className="flex items-center justify-between text-[11px] text-slate-500 pl-5">
-                        {sale.customerPhone ? (
-                          <span className="flex items-center gap-1">
-                            <Phone className="w-2.5 h-2.5 text-slate-400" />
-                            {sale.customerPhone}
-                          </span>
-                        ) : (
-                          <span className="italic text-slate-400">No phone</span>
-                        )}
-                        {sale.customerGstin && (
-                          <span className="font-mono text-[10px] text-slate-500 truncate max-w-[130px]">
-                            {sale.customerGstin}
-                          </span>
-                        )}
-                      </div>
-                    </div>
+                    <span
+                      className={`text-[10px] sm:text-xs px-2.5 py-1 rounded-full font-bold uppercase tracking-wider shrink-0 ${
+                        isPaid
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : isPartial
+                          ? 'bg-amber-100 text-amber-800'
+                          : isCancelled
+                          ? 'bg-slate-200 text-slate-700 line-through'
+                          : 'bg-rose-100 text-rose-800'
+                      }`}
+                    >
+                      {sale.paymentStatus.replace('_', ' ')}
+                    </span>
+                  </div>
 
-                    {/* Product Line Items Quick Tags */}
-                    {items.length > 0 && (
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-1 text-[10px] uppercase font-bold text-slate-400">
-                          <Package className="w-3 h-3" />
-                          <span>Items ({items.reduce((s, i) => s + i.quantity, 0)} {items[0]?.unit || 'units'})</span>
-                        </div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {items.slice(0, 2).map((it) => (
-                            <span
-                              key={it.id}
-                              className="text-[10px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-medium truncate max-w-[180px]"
-                            >
-                              {it.quantity} {it.unit} × {it.productName}
-                            </span>
-                          ))}
-                          {items.length > 2 && (
-                            <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-md font-bold">
-                              +{items.length - 2} more
-                            </span>
-                          )}
-                        </div>
+                  {/* Important Summary Info (Date, Units Count & Key Financial Amounts) */}
+                  <div className="flex items-center justify-between gap-3 bg-slate-50/80 p-2.5 sm:p-3 rounded-xl border border-slate-100 text-xs">
+                    {/* Date & Items Count */}
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex items-center gap-1.5 text-slate-600 font-medium">
+                        <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span>{formatDate(sale.saleDate)}</span>
                       </div>
-                    )}
-
-                    {/* Financial Numbers Card */}
-                    <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-2.5 space-y-2">
-                      <div className="flex items-baseline justify-between">
-                        <span className="text-[10px] uppercase font-bold text-slate-500">Invoice Total</span>
-                        <div className="text-right">
-                          <span className="text-base font-black text-slate-900">
-                            {formatCurrency(sale.invoiceTotal, settings.currency)}
-                          </span>
-                          <div className="text-[10px] text-slate-400">
-                            Taxable: {formatCurrency(sale.subtotal, settings.currency)}
-                            {sale.gstAmount > 0 && ` + GST ${formatCurrency(sale.gstAmount, settings.currency)}`}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="pt-2 border-t border-slate-200/60 grid grid-cols-2 gap-2 text-[11px]">
-                        <div>
-                          <span className="text-[10px] text-slate-400 block">Paid</span>
-                          <span className="font-bold text-emerald-600">
-                            {formatCurrency(sale.paidAmount, settings.currency)}
-                          </span>
-                        </div>
-
-                        <div className="text-right">
-                          <span className="text-[10px] text-slate-400 block">Pending Due</span>
-                          <span className={`font-bold ${sale.pendingAmount > 0 ? 'text-rose-600' : 'text-slate-400'}`}>
-                            {sale.pendingAmount > 0 ? formatCurrency(sale.pendingAmount, settings.currency) : '₹0 (Clear)'}
-                          </span>
-                        </div>
-                      </div>
-
-                      {sale.oldDue > 0 && (
-                        <div className="text-[10px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded font-medium flex items-center justify-between">
-                          <span>Previous Due Added:</span>
-                          <span className="font-bold">{formatCurrency(sale.oldDue, settings.currency)}</span>
+                      {items.length > 0 && (
+                        <div className="flex items-center gap-1.5 text-slate-500 font-medium truncate">
+                          <Package className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          <span className="truncate">{items.reduce((s, i) => s + i.quantity, 0)} {items[0]?.unit || 'units'} ({items.length} item{items.length > 1 ? 's' : ''})</span>
                         </div>
                       )}
                     </div>
+
+                    {/* Financial Highlights (Total & Pending) */}
+                    <div className="flex items-center gap-3 sm:gap-4 shrink-0 text-right">
+                      <div>
+                        <span className="text-[10px] text-slate-400 uppercase font-bold block leading-tight">Total</span>
+                        <span className="font-black text-slate-900 text-sm sm:text-base">
+                          {formatCurrency(sale.invoiceTotal, settings.currency)}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-rose-500 uppercase font-bold block leading-tight">Pending</span>
+                        <span className={`font-bold text-xs sm:text-sm ${sale.pendingAmount > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                          {sale.pendingAmount > 0 ? formatCurrency(sale.pendingAmount, settings.currency) : 'Clear (₹0)'}
+                        </span>
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Actions Footer */}
-                  <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                  {/* Actions Bar */}
+                  <div className="flex items-center justify-between gap-2 pt-0.5">
                     <div className="flex items-center gap-1.5">
                       <button
+                        type="button"
                         onClick={(e) => handleDownload(sale, e)}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
                         title="Download PDF"
@@ -593,6 +485,7 @@ export const SalesView: React.FC = () => {
                       </button>
 
                       <button
+                        type="button"
                         onClick={(e) => handleWhatsApp(sale, e)}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-bold text-xs transition-colors cursor-pointer"
                         title="Send PDF & Invoice via WhatsApp"
@@ -600,24 +493,27 @@ export const SalesView: React.FC = () => {
                         <Send className="w-3.5 h-3.5 text-emerald-600" />
                         <span>WhatsApp</span>
                       </button>
-                    </div>
 
-                    <div className="flex items-center gap-1.5">
                       {sale.pendingAmount > 0 && !isCancelled && (
                         <button
+                          type="button"
                           onClick={(e) => handleOpenPayment(sale, e)}
-                          className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-bold text-xs shadow-2xs transition-all cursor-pointer"
                         >
                           <CreditCard className="w-3.5 h-3.5" />
                           <span>+ Pay</span>
                         </button>
                       )}
-
-                      <span className="flex items-center gap-0.5 text-xs text-slate-400 group-hover:text-emerald-600 font-semibold pl-1">
-                        <span>Details</span>
-                        <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-                      </span>
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedSaleForDetail(sale)}
+                      className="flex items-center gap-1 text-xs font-bold text-emerald-600 hover:text-emerald-700 group-hover:translate-x-0.5 transition-transform cursor-pointer"
+                    >
+                      <span>View Details</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               );
@@ -739,6 +635,87 @@ export const SalesView: React.FC = () => {
         }}
         sale={selectedSaleForPayment}
       />
+
+      {/* Sales Financial Overview Metrics Modal (Opened via BarChart2 Icon) */}
+      {isMetricsModalOpen && (
+        <div 
+          className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+          onClick={() => setIsMetricsModalOpen(false)}
+        >
+          <div 
+            className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
+                  <BarChart2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-slate-900 leading-tight">
+                    Sales & Financial Overview
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Real-time revenue, collections & receivables tracking
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsMetricsModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 pt-1">
+              {/* Metric 1: Total Invoiced */}
+              <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+                  Total Invoiced
+                </span>
+                <div className="text-xl font-black text-slate-900 mt-1">
+                  {formatCurrency(totalInvoiced, settings.currency)}
+                </div>
+                <span className="text-xs text-slate-500">{filteredSales.length} invoice(s)</span>
+              </div>
+
+              {/* Metric 2: Collected */}
+              <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs">
+                <span className="text-[10px] uppercase font-bold text-emerald-600 block tracking-wider">
+                  Collected
+                </span>
+                <div className="text-xl font-black text-emerald-700 mt-1">
+                  {formatCurrency(totalCollected, settings.currency)}
+                </div>
+                <span className="text-xs text-emerald-600 font-semibold">Realized cash/UPI</span>
+              </div>
+
+              {/* Metric 3: Pending */}
+              <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs">
+                <span className="text-[10px] uppercase font-bold text-rose-600 block tracking-wider">
+                  Pending
+                </span>
+                <div className="text-xl font-black text-rose-600 mt-1">
+                  {formatCurrency(totalPending, settings.currency)}
+                </div>
+                <span className="text-xs text-rose-500 font-medium">Receivables</span>
+              </div>
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setIsMetricsModalOpen(false)}
+                className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-sm transition-all cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

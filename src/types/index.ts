@@ -22,6 +22,10 @@ export interface ActivityTask {
   completedAt?: string | null;
   completedBy?: string;
   assignedTo?: string;
+  dispenserCount?: number;
+  costPerDispenser?: number;
+  totalDispenserCost?: number;
+  serviceCost?: number;
 }
 
 export interface Activity {
@@ -44,6 +48,12 @@ export interface Activity {
   createdBy?: string;
   completedBy?: string;
   assignedTo?: string;
+
+  // Dispenser details
+  dispenserCount?: number;
+  costPerDispenser?: number;
+  totalDispenserCost?: number;
+  serviceCost?: number;
   
   // Legacy / backwards compatibility fields:
   activityType?: ActivityType;

@@ -291,11 +291,11 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({ isOpen, onClose }) =
               <h2 className="text-base sm:text-lg font-bold text-slate-900">
                 {createdSale ? 'Invoice Created Successfully!' : 'Generate Sales Invoice'}
               </h2>
-              <p className="text-xs text-slate-500">
-                {createdSale
-                  ? `Invoice #${createdSale.invoiceNumber} recorded in PURIT system.`
-                  : 'Add hygiene products, review GST & Old Due, and confirm dispatch.'}
-              </p>
+              {createdSale && (
+                <p className="text-xs text-slate-500">
+                  Invoice #{createdSale.invoiceNumber} recorded in PURIT system.
+                </p>
+              )}
             </div>
           </div>
 

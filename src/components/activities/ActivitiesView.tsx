@@ -776,6 +776,43 @@ export const ActivitiesView: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Dispenser Details display if present */}
+                {(viewingNoteActivity.dispenserCount || viewingNoteActivity.costPerDispenser || viewingNoteActivity.totalDispenserCost) ? (
+                  <div className="p-3 rounded-2xl bg-emerald-50/70 border border-emerald-200/80 space-y-1">
+                    <div className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1">
+                      <Wrench className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Dispenser Details</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-xs pt-1">
+                      <div>
+                        <span className="text-[10px] text-slate-500 block font-medium">Number of Dispenser</span>
+                        <span className="font-bold text-slate-800">{viewingNoteActivity.dispenserCount || 0}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-500 block font-medium">Cost for One</span>
+                        <span className="font-bold text-slate-800">₹{(viewingNoteActivity.costPerDispenser || 0).toLocaleString('en-IN')}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-500 block font-medium">Total Cost</span>
+                        <span className="font-bold text-emerald-700">₹{(viewingNoteActivity.totalDispenserCost || 0).toLocaleString('en-IN')}</span>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+
+                {/* Service Cost display if present */}
+                {viewingNoteActivity.serviceCost ? (
+                  <div className="p-3 rounded-2xl bg-indigo-50/70 border border-indigo-200/80 space-y-1">
+                    <div className="text-[10px] font-bold text-indigo-800 uppercase tracking-wider flex items-center gap-1">
+                      <Settings2 className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>Service Cost</span>
+                    </div>
+                    <div className="text-xs font-bold text-indigo-900 pt-0.5">
+                      ₹{viewingNoteActivity.serviceCost.toLocaleString('en-IN')}
+                    </div>
+                  </div>
+                ) : null}
+
                 {/* Additional Context Snippets */}
                 <div className="space-y-1.5 text-xs text-slate-600 bg-slate-50/60 p-3 rounded-2xl border border-slate-150">
                   {viewingNoteActivity.customerAddress && (
