@@ -38,7 +38,8 @@ export function getTodayString(): string {
 }
 
 export function formatCurrency(amount: number, currency: string = '₹'): string {
-  const rounded = Math.round((amount + Number.EPSILON) * 100) / 100;
+  const num = Number(amount) || 0;
+  const rounded = Math.round((num + Number.EPSILON) * 100) / 100;
   return `${currency}${rounded.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 }
 

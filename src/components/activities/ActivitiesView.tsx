@@ -208,6 +208,14 @@ export const ActivitiesView: React.FC = () => {
   return (
     <div id="activities-view" className="space-y-3 pb-16">
       
+      {/* Brand Header for First Screen / Landing Page */}
+      <div className="flex items-center gap-2.5 pt-0.5 pb-1">
+        <div className="w-8 h-8 rounded-xl bg-emerald-700 text-white flex items-center justify-center font-black tracking-tight text-base shadow-sm">
+          P
+        </div>
+        <span className="font-black text-slate-900 text-xl tracking-tight">PURIT</span>
+      </div>
+
       {/* 1. TOP SECTION — SCHEDULED ACTIVITY (Compact Operational Card) */}
       <div className="bg-slate-900 text-white rounded-2xl p-3 sm:p-4 shadow-md border border-slate-800">
         
@@ -767,6 +775,43 @@ export const ActivitiesView: React.FC = () => {
                     {viewingNoteActivity.remarks || 'No remarks recorded for this visit.'}
                   </div>
                 </div>
+
+                {/* Dispenser Details display if present */}
+                {(viewingNoteActivity.dispenserCount || viewingNoteActivity.costPerDispenser || viewingNoteActivity.totalDispenserCost) ? (
+                  <div className="p-3 rounded-2xl bg-emerald-50/70 border border-emerald-200/80 space-y-1">
+                    <div className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1">
+                      <Wrench className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Dispenser Details</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-xs pt-1">
+                      <div>
+                        <span className="text-[10px] text-slate-500 block font-medium">Number of Dispenser</span>
+                        <span className="font-bold text-slate-800">{viewingNoteActivity.dispenserCount || 0}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-500 block font-medium">Cost for One</span>
+                        <span className="font-bold text-slate-800">₹{(viewingNoteActivity.costPerDispenser || 0).toLocaleString('en-IN')}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-500 block font-medium">Total Cost</span>
+                        <span className="font-bold text-emerald-700">₹{(viewingNoteActivity.totalDispenserCost || 0).toLocaleString('en-IN')}</span>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+
+                {/* Service Cost display if present */}
+                {viewingNoteActivity.serviceCost ? (
+                  <div className="p-3 rounded-2xl bg-indigo-50/70 border border-indigo-200/80 space-y-1">
+                    <div className="text-[10px] font-bold text-indigo-800 uppercase tracking-wider flex items-center gap-1">
+                      <Settings2 className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>Service Cost</span>
+                    </div>
+                    <div className="text-xs font-bold text-indigo-900 pt-0.5">
+                      ₹{viewingNoteActivity.serviceCost.toLocaleString('en-IN')}
+                    </div>
+                  </div>
+                ) : null}
 
                 {/* Additional Context Snippets */}
                 <div className="space-y-1.5 text-xs text-slate-600 bg-slate-50/60 p-3 rounded-2xl border border-slate-150">

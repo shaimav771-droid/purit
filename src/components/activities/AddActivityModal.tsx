@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
+import { PaymentMethod } from '../../types';
 import { 
   X, 
   Wrench, 
@@ -18,13 +19,25 @@ import {
   ChevronDown,
   UserCheck,
   Layers,
-  AlertCircle
+  AlertCircle,
+  Trash2,
+  Receipt,
+  Package,
+  CreditCard
 } from 'lucide-react';
-import { getTodayString } from '../../lib/dateUtils';
+import { getTodayString, formatCurrency } from '../../lib/dateUtils';
+import { getNextInvoiceNumber } from '../../lib/invoiceNumbering';
 import { normalizeTasksFromActivity, normalizeTaskTypeName, getCustomerCanonicalKey, normalizeDueDate } from '../../lib/activityUtils';
 import { motion } from 'motion/react';
 
 type ActivityOption = 'Dispenser Fitting' | 'Dispenser Service' | 'Delivery';
+
+interface DeliveryItemRow {
+  productId: string;
+  quantity: number;
+  unitSellingPrice: number;
+  discount: number;
+}
 
 export const AddActivityModal: React.FC = () => {
   const { 
@@ -32,9 +45,12 @@ export const AddActivityModal: React.FC = () => {
     setIsAddActivityModalOpen, 
     selectedActivityType,
     customers, 
+    products,
+    settings,
     activities,
     addActivity,
-    addCustomer 
+    addCustomer,
+    createSale
   } = useApp();
 
   // Multi-select activity types for 1 combined task card
@@ -60,6 +76,87 @@ export const AddActivityModal: React.FC = () => {
   // Remarks & optional assigned
   const [remarks, setRemarks] = useState<string>('');
   const [assignedTo, setAssignedTo] = useState<string>('PURIT Field Team');
+  
+  // Dispenser Details (3 Options: Number of Dispenser, Cost for One, Total Cost)
+  const [dispenserCount, setDispenserCount] = useState<string>('');
+  const [costPerDispenser, setCostPerDispenser] = useState<string>('');
+
+  // Service Cost (Only shown when Service is selected)
+  const [serviceCost, setServiceCost] = useState<string>('');
+
+  // Delivery Items & Complete Sales Invoice Integration (Shown when Delivery is selected)
+  const [deliveryItems, setDeliveryItems] = useState<DeliveryItemRow[]>([]);
+  const [deliveryIsGst, setDeliveryIsGst] = useState<boolean>(true);
+  const [deliverySaleDiscount, setDeliverySaleDiscount] = useState<number>(0);
+  const [deliveryPaymentOption, setDeliveryPaymentOption] = useState<'none' | 'full' | 'partial'>('none');
+  const [deliveryPartialAmount, setDeliveryPartialAmount] = useState<number>(0);
+  const [deliveryPaymentMethod, setDeliveryPaymentMethod] = useState<PaymentMethod>('upi');
+  const [deliveryReferenceNumber, setDeliveryReferenceNumber] = useState<string>('');
+  const [deliveryPaymentNotes, setDeliveryPaymentNotes] = useState<string>('');
+
+  const safeCustomers = Array.isArray(customers) ? customers : [];
+  const selectedCustomerObj = safeCustomers.find(c => c && c.id === selectedCustomerId);
+
+  const totalDispenserCost = useMemo(() => {
+    const qty = parseFloat(dispenserCount) || 0;
+    const cost = parseFloat(costPerDispenser) || 0;
+    return qty > 0 && cost > 0 ? qty * cost : 0;
+  }, [dispenserCount, costPerDispenser]);
+
+  // Preview next invoice number depending on active GST / Non-GST series
+  const nextInvoiceNumberPreview = useMemo(() => {
+    if (deliveryIsGst) {
+      const currentGst = settings.currentGstInvoiceNumber || `${settings.invoicePrefix || 'PURIT/00/'}12`;
+      return getNextInvoiceNumber(currentGst, settings.invoicePrefix || 'PURIT/00/', '12');
+    } else {
+      const currentNonGst = settings.currentNonGstInvoiceNumber || `${settings.nonGstInvoicePrefix || 'NON-GST/'}000`;
+      return getNextInvoiceNumber(currentNonGst, settings.nonGstInvoicePrefix || 'NON-GST/', '000');
+    }
+  }, [deliveryIsGst, settings]);
+
+  const deliveryCalculations = useMemo(() => {
+    let subtotal = 0;
+    let totalGrossProfit = 0;
+
+    deliveryItems.forEach(item => {
+      const prod = products.find(p => p.id === item.productId);
+      const lineDisc = Number(item.discount) || 0;
+      const lineTotalBeforeGst = Math.max(0, (Number(item.quantity) * Number(item.unitSellingPrice)) - lineDisc);
+      const cost = prod ? prod.makingCost : 0;
+      const profit = lineTotalBeforeGst - (Number(item.quantity) * cost);
+
+      subtotal += lineTotalBeforeGst;
+      totalGrossProfit += profit;
+    });
+
+    const discSubtotal = Math.max(0, subtotal - (Number(deliverySaleDiscount) || 0));
+    const gstRate = deliveryIsGst ? (settings.gstRate || 18) : 0;
+    const cgstRate = deliveryIsGst ? (settings.cgstRate ?? (gstRate / 2)) : 0;
+    const sgstRate = deliveryIsGst ? (settings.sgstRate ?? (gstRate / 2)) : 0;
+
+    const gstAmount = deliveryIsGst ? Math.round(((discSubtotal * gstRate) / 100 + Number.EPSILON) * 100) / 100 : 0;
+    const cgstAmount = deliveryIsGst ? Math.round(((discSubtotal * cgstRate) / 100 + Number.EPSILON) * 100) / 100 : 0;
+    const sgstAmount = deliveryIsGst ? Math.round(((discSubtotal * sgstRate) / 100 + Number.EPSILON) * 100) / 100 : 0;
+    const invoiceTotal = discSubtotal + gstAmount;
+
+    const oldDue = selectedCustomerObj?.totalPending || 0;
+    const totalDue = invoiceTotal + oldDue;
+
+    return {
+      subtotal,
+      discSubtotal,
+      gstRate,
+      cgstRate,
+      sgstRate,
+      gstAmount,
+      cgstAmount,
+      sgstAmount,
+      invoiceTotal,
+      oldDue,
+      totalDue,
+      totalGrossProfit,
+    };
+  }, [deliveryItems, products, deliverySaleDiscount, selectedCustomerObj, deliveryIsGst, settings]);
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isSubmittingRef = useRef<boolean>(false);
@@ -88,6 +185,17 @@ export const AddActivityModal: React.FC = () => {
       setCustomerPhone('');
       setCustomerAddress('');
       setRemarks('');
+      setDispenserCount('');
+      setCostPerDispenser('');
+      setServiceCost('');
+      setDeliveryItems([]);
+      setDeliveryIsGst(settings.isGstRegistered !== false);
+      setDeliverySaleDiscount(0);
+      setDeliveryPaymentOption('none');
+      setDeliveryPartialAmount(0);
+      setDeliveryPaymentMethod('upi');
+      setDeliveryReferenceNumber('');
+      setDeliveryPaymentNotes('');
       setAssignedTo('PURIT Field Team');
       setSearchTerm('');
       setIsCustomerDropdownOpen(false);
@@ -98,16 +206,54 @@ export const AddActivityModal: React.FC = () => {
       setCustomerMode(hasCustomers ? 'browse' : 'new');
       setSaveToDirectory(true);
     }
-  }, [isAddActivityModalOpen, selectedActivityType]);
+  }, [isAddActivityModalOpen, selectedActivityType, customers, settings]);
 
-  const safeCustomers = Array.isArray(customers) ? customers : [];
+  // Delivery item row handlers
+  const handleAddDeliveryItem = () => {
+    if (!products || products.length === 0) return;
+    const defaultProd = products[0];
+    const price = (defaultProd as any).sellingPrice || defaultProd.defaultSellingPrice || 0;
+    setDeliveryItems(prev => [
+      ...prev,
+      {
+        productId: defaultProd.id,
+        quantity: 1,
+        unitSellingPrice: price,
+        discount: 0,
+      },
+    ]);
+  };
+
+  const handleRemoveDeliveryItem = (index: number) => {
+    setDeliveryItems(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleUpdateDeliveryItem = (index: number, field: keyof DeliveryItemRow, value: any) => {
+    setDeliveryItems(prev => {
+      const copy = [...prev];
+      if (field === 'productId') {
+        const prod = products.find(p => p.id === value);
+        const price = prod ? ((prod as any).sellingPrice || prod.defaultSellingPrice || 0) : copy[index].unitSellingPrice;
+        copy[index] = {
+          ...copy[index],
+          productId: value,
+          unitSellingPrice: price,
+        };
+      } else {
+        copy[index] = {
+          ...copy[index],
+          [field]: value,
+        };
+      }
+      return copy;
+    });
+  };
 
   // Toggle selection of activity option
   const toggleActivityType = (type: ActivityOption) => {
     setSelectedTypes(prev => {
       if (prev.includes(type)) {
         if (prev.length === 1) {
-          // Keep at least 1 selected
           return prev;
         }
         return prev.filter(t => t !== type);
@@ -132,6 +278,7 @@ export const AddActivityModal: React.FC = () => {
       setCustomerName(cust.restaurantName || '');
       setCustomerPhone(cust.phone || '');
       setCustomerAddress(cust.address || '');
+      setDeliveryIsGst(cust.gstEnabled && settings.isGstRegistered !== false);
     }
     setIsCustomerDropdownOpen(false);
   };
@@ -145,8 +292,6 @@ export const AddActivityModal: React.FC = () => {
     const q = (searchTerm || '').toLowerCase();
     return name.includes(q) || person.includes(q) || phone.includes(q);
   });
-
-  const selectedCustomerObj = safeCustomers.find(c => c && c.id === selectedCustomerId);
 
   // Check if an existing visit is already scheduled for this restaurant on this date
   const existingVisit = useMemo(() => {
@@ -221,17 +366,85 @@ export const AddActivityModal: React.FC = () => {
         finalCustId = `adhoc-${Date.now()}`;
       }
 
+      // Auto-generate Sales Invoice if Delivery is selected & items are specified
+      let deliveryInvoiceNote = '';
+      if (selectedTypes.includes('Delivery') && deliveryItems.length > 0) {
+        const validItems = deliveryItems.filter(i => i.productId && Number(i.quantity) > 0);
+        if (validItems.length > 0) {
+          try {
+            let initialPayment;
+            if (deliveryPaymentOption === 'full') {
+              initialPayment = {
+                amount: deliveryCalculations.invoiceTotal,
+                paymentMethod: deliveryPaymentMethod,
+                referenceNumber: deliveryReferenceNumber,
+                notes: deliveryPaymentNotes || 'Paid in full upon delivery schedule',
+              };
+            } else if (deliveryPaymentOption === 'partial' && deliveryPartialAmount > 0) {
+              initialPayment = {
+                amount: Math.min(deliveryPartialAmount, deliveryCalculations.invoiceTotal),
+                paymentMethod: deliveryPaymentMethod,
+                referenceNumber: deliveryReferenceNumber,
+                notes: deliveryPaymentNotes || 'Partial payment received on delivery schedule',
+              };
+            }
+
+            const saleResult = await createSale(
+              {
+                customerId: finalCustId,
+                saleDate: dueDate,
+                gstEnabled: deliveryIsGst,
+                discount: Number(deliverySaleDiscount) || 0,
+                notes: remarks.trim() || `Auto-generated from scheduled Delivery Visit on ${dueDate}`,
+              },
+              validItems.map(i => ({
+                productId: i.productId,
+                quantity: Number(i.quantity),
+                unitSellingPrice: Number(i.unitSellingPrice),
+                discount: Number(i.discount) || 0,
+              })),
+              initialPayment
+            );
+            if (saleResult) {
+              deliveryInvoiceNote = ` [Invoice #${saleResult.invoiceNumber} Generated]`;
+            }
+          } catch (saleErr) {
+            console.error('Failed to auto-create sale invoice for delivery', saleErr);
+          }
+        }
+      }
+
       const combinedLabel = selectedTypes.join(' + ');
+      const isFittingSelected = selectedTypes.includes('Dispenser Fitting');
+      const isServiceSelected = selectedTypes.includes('Dispenser Service');
+
+      const numDispensers = isFittingSelected ? (parseFloat(dispenserCount) || undefined) : undefined;
+      const costOne = isFittingSelected ? (parseFloat(costPerDispenser) || undefined) : undefined;
+      const totCost = isFittingSelected ? (totalDispenserCost || undefined) : undefined;
+      const servCost = isServiceSelected ? (parseFloat(serviceCost) || undefined) : undefined;
+
       const taskObjects = selectedTypes.map((t, idx) => {
         const typeSlug = t.toLowerCase().replace(/[^a-z0-9]/g, '-');
+        const taskRemark = t === 'Delivery' && deliveryInvoiceNote 
+          ? (remarks.trim() ? `${remarks.trim()}${deliveryInvoiceNote}` : `Delivery scheduled${deliveryInvoiceNote}`)
+          : (remarks.trim() || undefined);
+
         return {
           id: `task-${Date.now()}-${typeSlug}-${idx}-${Math.random().toString(36).substring(2, 7)}`,
           type: t,
           status: 'pending' as const,
-          remarks: remarks.trim() || undefined,
+          remarks: taskRemark,
           assignedTo: assignedTo.trim() || 'PURIT Field Staff',
+          dispenserCount: numDispensers,
+          costPerDispenser: costOne,
+          totalDispenserCost: totCost,
+          serviceCost: servCost,
         };
       });
+
+      const finalRemarks = remarks.trim() 
+        ? `${remarks.trim()}${deliveryInvoiceNote}`
+        : `${getCombinedTypeShortTitle()} scheduled${deliveryInvoiceNote}`;
 
       // Create or merge into EXACTLY ONE scheduled activity card per restaurant per date
       await addActivity({
@@ -243,8 +456,12 @@ export const AddActivityModal: React.FC = () => {
         customerPhone: customerPhone.trim() || undefined,
         customerAddress: customerAddress.trim() || undefined,
         dueDate,
-        remarks: remarks.trim() || `${getCombinedTypeShortTitle()} scheduled`,
+        remarks: finalRemarks,
         assignedTo: assignedTo.trim() || 'PURIT Field Staff',
+        dispenserCount: numDispensers,
+        costPerDispenser: costOne,
+        totalDispenserCost: totCost,
+        serviceCost: servCost,
       });
 
       setIsAddActivityModalOpen(false);
@@ -271,7 +488,7 @@ export const AddActivityModal: React.FC = () => {
         exit={{ opacity: 0, scale: 0.95, y: 6 }}
         transition={{ duration: 0.18 }}
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md bg-white rounded-3xl border border-slate-200 shadow-2xl overflow-hidden my-auto"
+        className="w-full max-w-2xl bg-white rounded-3xl border border-slate-200 shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col"
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50/90">
@@ -295,7 +512,7 @@ export const AddActivityModal: React.FC = () => {
         </div>
 
         {/* Modal Form */}
-        <form onSubmit={handleSubmit} className="p-4 space-y-3.5">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-3.5 overflow-y-auto max-h-[80vh]">
           
           {/* 1. Multi-Select Activity Options (All in 1 Visit Card) */}
           <div className="space-y-1.5">
@@ -423,8 +640,8 @@ export const AddActivityModal: React.FC = () => {
                       : 'text-slate-500 hover:text-slate-800'
                   }`}
                 >
-                  <Plus className="w-3 h-3" />
-                  <span>+ New</span>
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>New</span>
                 </button>
               </div>
             </div>
@@ -679,6 +896,412 @@ export const AddActivityModal: React.FC = () => {
               </div>
             )}
           </div>
+
+          {/* Dispenser Details (3 Options) - Only shown when 'Dispenser Fitting' task is selected */}
+          {selectedTypes.includes('Dispenser Fitting') && (
+            <div className="space-y-1.5 pt-1.5 border-t border-slate-100">
+              <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block flex items-center gap-1">
+                <Wrench className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Dispenser Details</span>
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="text-[10px] font-semibold text-slate-500 block mb-0.5">
+                    Number of Dispenser
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="e.g. 2"
+                    value={dispenserCount}
+                    onChange={(e) => setDispenserCount(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-emerald-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-semibold text-slate-500 block mb-0.5">
+                    Cost for One
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-medium">₹</span>
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="0.00"
+                      value={costPerDispenser}
+                      onChange={(e) => setCostPerDispenser(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-6 pr-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-emerald-600"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-semibold text-slate-500 block mb-0.5">
+                    Total Cost
+                  </label>
+                  <div className="w-full bg-emerald-50/80 border border-emerald-200/90 rounded-xl px-2.5 py-1.5 text-xs font-bold text-emerald-800 flex items-center h-[33px]">
+                    ₹{totalDispenserCost ? totalDispenserCost.toLocaleString('en-IN') : '0'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Service Cost Option - Only shown when 'Dispenser Service' task is selected */}
+          {selectedTypes.includes('Dispenser Service') && (
+            <div className="space-y-1.5 pt-1.5 border-t border-slate-100">
+              <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block flex items-center gap-1">
+                <Settings2 className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Service Cost</span>
+              </label>
+              <div className="max-w-[200px]">
+                <div className="relative">
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-medium">₹</span>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="0.00"
+                    value={serviceCost}
+                    onChange={(e) => setServiceCost(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-6 pr-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-600 font-semibold"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Delivery Items & Complete Sales Invoice Integration Option - Only shown when 'Delivery' task is selected */}
+          {selectedTypes.includes('Delivery') && (
+            <div className="space-y-3 pt-3 border-t border-slate-200">
+              
+              {/* Header */}
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-800 uppercase tracking-wider block flex items-center gap-1.5">
+                  <Truck className="w-4 h-4 text-sky-600" />
+                  <span>Delivery Items & Sales Invoice</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={handleAddDeliveryItem}
+                  className="text-xs font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 cursor-pointer shrink-0"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add Product</span>
+                </button>
+              </div>
+
+              {/* Invoice Numbering Series & Tax Type Selection */}
+              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-700">Invoice Numbering Series & Tax Type</span>
+                  <span className="text-[10px] font-mono font-bold text-slate-600">
+                    Next Number: <span className="text-emerald-700 font-extrabold">{nextInvoiceNumberPreview}</span>
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setDeliveryIsGst(true)}
+                    className={`p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
+                      deliveryIsGst
+                        ? 'bg-sky-50/90 border-sky-400 text-sky-950 shadow-2xs'
+                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100/70'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <span className="font-bold text-xs">GST Tax Invoice</span>
+                      {deliveryIsGst && <span className="px-1.5 py-0.5 rounded-md bg-sky-600 text-white text-[9px] font-extrabold uppercase">Active</span>}
+                    </div>
+                    <span className="text-[10px] text-sky-800/80 mt-1 font-mono font-semibold">
+                      Series: {settings.invoicePrefix || 'PURIT/00/'} • {settings.gstRate || 18}% GST
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setDeliveryIsGst(false)}
+                    className={`p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
+                      !deliveryIsGst
+                        ? 'bg-purple-50/90 border-purple-400 text-purple-950 shadow-2xs'
+                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100/70'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <span className="font-bold text-xs">Non-GST Bill / Retail</span>
+                      {!deliveryIsGst && <span className="px-1.5 py-0.5 rounded-md bg-purple-600 text-white text-[9px] font-extrabold uppercase">Active</span>}
+                    </div>
+                    <span className="text-[10px] text-purple-800/80 mt-1 font-mono font-semibold">
+                      Series: {settings.nonGstInvoicePrefix || 'NON-GST/'} • 0% GST
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Selected Customer Snapshot & Old Due Banner */}
+              {selectedCustomerObj && (
+                <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-slate-900">{selectedCustomerObj.restaurantName}</span>
+                      {deliveryIsGst ? (
+                        <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                          18% GST Enabled ({selectedCustomerObj.gstin || 'Taxable'})
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded bg-slate-200 text-slate-700 text-[10px] font-semibold">
+                          Non-GST Bill
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[10px] text-slate-500 mt-0.5">
+                      Phone: {selectedCustomerObj.phone} | {selectedCustomerObj.address}
+                    </div>
+                  </div>
+
+                  {selectedCustomerObj.totalPending > 0 && (
+                    <div className="text-right shrink-0 bg-rose-50 px-3 py-1.5 rounded-xl border border-rose-200">
+                      <span className="text-[10px] uppercase font-bold text-rose-600 block">Existing Old Due</span>
+                      <span className="text-xs font-black text-rose-700">
+                        {formatCurrency(selectedCustomerObj.totalPending, settings.currency)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Product Line Items */}
+              {deliveryItems.length === 0 ? (
+                <div className="p-5 rounded-2xl border border-dashed border-slate-300 text-center text-slate-400 text-xs">
+                  No products added yet. Click <strong>"+ Add Product"</strong> above to record delivery stock & generate invoice.
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  {deliveryItems.map((row, idx) => {
+                    const product = products.find(p => p.id === row.productId);
+                    const lineTotal = Math.max(0, (row.quantity * row.unitSellingPrice) - (row.discount || 0));
+
+                    return (
+                      <div key={idx} className="p-3 rounded-2xl bg-slate-50/90 border border-slate-200 space-y-2.5 text-xs">
+                        <div className="flex items-center justify-between gap-2">
+                          <select
+                            value={row.productId}
+                            onChange={(e) => handleUpdateDeliveryItem(idx, 'productId', e.target.value)}
+                            className="flex-1 px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-xs focus:outline-none focus:border-emerald-500"
+                          >
+                            {products.map(p => (
+                              <option key={p.id} value={p.id}>
+                                {p.name} — {p.category.toUpperCase()} (Stock: {p.currentStock} {p.unit})
+                              </option>
+                            ))}
+                          </select>
+
+                          {deliveryItems.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveDeliveryItem(idx)}
+                              className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg cursor-pointer shrink-0"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 text-xs">
+                          <div>
+                            <label className="text-[10px] text-slate-500 block mb-0.5">Qty ({product?.unit || 'Units'})</label>
+                            <input
+                              type="number"
+                              min={1}
+                              required
+                              value={row.quantity}
+                              onChange={(e) => handleUpdateDeliveryItem(idx, 'quantity', parseFloat(e.target.value) || 0)}
+                              className="w-full px-2.5 py-1 rounded-lg border border-slate-200 bg-white font-semibold text-center"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] text-slate-500 block mb-0.5">Unit Price (₹)</label>
+                            <input
+                              type="number"
+                              min={0}
+                              step="any"
+                              required
+                              value={row.unitSellingPrice}
+                              onChange={(e) => handleUpdateDeliveryItem(idx, 'unitSellingPrice', parseFloat(e.target.value) || 0)}
+                              className="w-full px-2.5 py-1 rounded-lg border border-slate-200 bg-white font-semibold text-center"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] text-slate-500 block mb-0.5">Discount (₹)</label>
+                            <input
+                              type="number"
+                              min={0}
+                              step="any"
+                              value={row.discount}
+                              onChange={(e) => handleUpdateDeliveryItem(idx, 'discount', parseFloat(e.target.value) || 0)}
+                              className="w-full px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-center"
+                            />
+                          </div>
+
+                          <div className="col-span-3 sm:col-span-1 flex flex-col justify-center sm:text-right">
+                            <span className="text-[10px] text-slate-500 block">Line Total</span>
+                            <span className="font-extrabold text-slate-900 text-xs">
+                              {formatCurrency(lineTotal, settings.currency)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Calculations & Totals Summary Box */}
+                  <div className="p-4 rounded-2xl bg-slate-900 text-white space-y-2 text-xs">
+                    <div className="flex justify-between text-slate-300">
+                      <span>Subtotal:</span>
+                      <span className="font-semibold text-white">{formatCurrency(deliveryCalculations.subtotal, settings.currency)}</span>
+                    </div>
+
+                    {deliveryIsGst ? (
+                      <>
+                        <div className="flex justify-between text-sky-300 text-[11px]">
+                          <span>CGST ({deliveryCalculations.cgstRate}%):</span>
+                          <span className="font-semibold text-sky-400">+{formatCurrency(deliveryCalculations.cgstAmount, settings.currency)}</span>
+                        </div>
+                        <div className="flex justify-between text-sky-300 text-[11px]">
+                          <span>SGST ({deliveryCalculations.sgstRate}%):</span>
+                          <span className="font-semibold text-sky-400">+{formatCurrency(deliveryCalculations.sgstAmount, settings.currency)}</span>
+                        </div>
+                        <div className="flex justify-between text-slate-300">
+                          <span>Total GST ({deliveryCalculations.gstRate}%):</span>
+                          <span className="font-semibold text-emerald-400">+{formatCurrency(deliveryCalculations.gstAmount, settings.currency)}</span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex justify-between text-purple-300 text-[11px]">
+                        <span>Tax (Non-GST Series):</span>
+                        <span className="font-semibold text-purple-300">₹0 (Non-taxable)</span>
+                      </div>
+                    )}
+
+                    <div className="flex justify-between font-extrabold text-sm text-white pt-2 border-t border-slate-800">
+                      <span>Current Invoice Total:</span>
+                      <span className="text-emerald-400 text-base">{formatCurrency(deliveryCalculations.invoiceTotal, settings.currency)}</span>
+                    </div>
+
+                    {deliveryCalculations.oldDue > 0 && (
+                      <div className="flex justify-between text-rose-300 text-xs pt-1">
+                        <span>+ Previous Old Due:</span>
+                        <span>{formatCurrency(deliveryCalculations.oldDue, settings.currency)}</span>
+                      </div>
+                    )}
+
+                    {deliveryCalculations.oldDue > 0 && (
+                      <div className="flex justify-between font-black text-xs text-amber-300 pt-1 border-t border-slate-800">
+                        <span>Total Payable (with Old Due):</span>
+                        <span>{formatCurrency(deliveryCalculations.totalDue, settings.currency)}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Payment Collection Option */}
+                  <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                    <label className="block font-bold text-slate-800 text-xs">
+                      Payment Collection upon Delivery
+                    </label>
+
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setDeliveryPaymentOption('none')}
+                        className={`py-2 px-2.5 rounded-xl font-bold border transition-all text-center text-xs cursor-pointer ${
+                          deliveryPaymentOption === 'none'
+                            ? 'bg-slate-900 text-white border-slate-900'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        Unpaid (Credit)
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDeliveryPaymentOption('full');
+                          setDeliveryPartialAmount(deliveryCalculations.invoiceTotal);
+                        }}
+                        className={`py-2 px-2.5 rounded-xl font-bold border transition-all text-center text-xs cursor-pointer ${
+                          deliveryPaymentOption === 'full'
+                            ? 'bg-emerald-600 text-white border-emerald-600'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        Paid Full (₹{Math.round(deliveryCalculations.invoiceTotal)})
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setDeliveryPaymentOption('partial')}
+                        className={`py-2 px-2.5 rounded-xl font-bold border transition-all text-center text-xs cursor-pointer ${
+                          deliveryPaymentOption === 'partial'
+                            ? 'bg-amber-600 text-white border-amber-600'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        Partial Pay
+                      </button>
+                    </div>
+
+                    {deliveryPaymentOption !== 'none' && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs">
+                        {deliveryPaymentOption === 'partial' && (
+                          <div>
+                            <label className="block font-semibold text-slate-700 mb-1">Amount Collected (₹)</label>
+                            <input
+                              type="number"
+                              min={1}
+                              max={deliveryCalculations.invoiceTotal}
+                              value={deliveryPartialAmount || ''}
+                              onChange={(e) => setDeliveryPartialAmount(parseFloat(e.target.value) || 0)}
+                              placeholder="e.g. 2000"
+                              className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-bold"
+                            />
+                          </div>
+                        )}
+
+                        <div>
+                          <label className="block font-semibold text-slate-700 mb-1">Payment Method</label>
+                          <select
+                            value={deliveryPaymentMethod}
+                            onChange={(e) => setDeliveryPaymentMethod(e.target.value as any)}
+                            className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-semibold"
+                          >
+                            <option value="upi">UPI (GPay/PhonePe/Paytm)</option>
+                            <option value="cash">Cash</option>
+                            <option value="bank_transfer">Bank Transfer (NEFT/IMPS)</option>
+                            <option value="cheque">Cheque</option>
+                            <option value="card">Card</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block font-semibold text-slate-700 mb-1">UTR / Ref # (Optional)</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. UPI-998877"
+                            value={deliveryReferenceNumber}
+                            onChange={(e) => setDeliveryReferenceNumber(e.target.value)}
+                            className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* 5. Submit Button */}
           <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-100">

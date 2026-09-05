@@ -1,14 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
-import { 
-  ArrowLeft, 
-  Building2, 
-  Phone, 
-  Mail, 
-  MapPin, 
-  Receipt, 
-  Plus, 
-  Download, 
+import {
+  ArrowLeft,
+  Building2,
+  Phone,
+  Mail,
+  MapPin,
+  Receipt,
+  Plus,
+  Download,
   Edit2,
   Calendar,
   ChevronDown,
@@ -238,7 +238,7 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
   // Rolling Repurchase Status (Handwash & Tissue)
   const custId = currentCustomer.id || (currentCustomer as any)._id;
   const repSummary = customerRepurchaseMap?.get(custId);
-  
+
   const hw = useMemo(() => {
     return repSummary?.handwash || calculateConsumption(custId, 'handwash', sales, saleItems);
   }, [repSummary, custId, sales, saleItems]);
@@ -261,8 +261,8 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
 
   const overallRepurchaseStatus = repSummary?.overallRepurchaseStatus || (
     (hw.status === 'overdue' || ts.status === 'overdue') ? 'overdue' :
-    (hw.status === 'approaching' || ts.status === 'approaching') ? 'approaching' :
-    (hw.status === 'healthy' || ts.status === 'healthy') ? 'healthy' : 'insufficient_data'
+      (hw.status === 'approaching' || ts.status === 'approaching') ? 'approaching' :
+        (hw.status === 'healthy' || ts.status === 'healthy') ? 'healthy' : 'insufficient_data'
   );
 
   const handleToggleExpandSale = (saleId: string) => {
@@ -305,8 +305,8 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
       if (isNaN(d.getTime())) return formatDate(dateStr);
       const datePart = formatDate(dateStr);
       const timePart = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      return timePart && timePart !== '12:00 AM' && timePart !== '05:30 AM' 
-        ? `${datePart}, ${timePart}` 
+      return timePart && timePart !== '12:00 AM' && timePart !== '05:30 AM'
+        ? `${datePart}, ${timePart}`
         : datePart;
     } catch {
       return formatDate(dateStr);
@@ -359,7 +359,7 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
 
   return (
     <div id="customer-detail-view" className="-mt-3 sm:-mt-4 space-y-2 pb-12 animate-in fade-in duration-200">
-      
+
       {/* Back Icon Button (Above Left Corner of Card) */}
       <div className="flex items-center">
         <button
@@ -390,21 +390,19 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
                   {currentCustomer.restaurantName}
                 </h1>
                 {/* ACTIVE Status Badge inline with name */}
-                <span className={`px-3 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 ${
-                  currentCustomer.status === 'active' || !currentCustomer.status
-                    ? 'bg-[#dcfce7] text-[#16a34a]'
-                    : currentCustomer.status === 'lost'
+                <span className={`px-3 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 ${currentCustomer.status === 'active' || !currentCustomer.status
+                  ? 'bg-[#dcfce7] text-[#16a34a]'
+                  : currentCustomer.status === 'lost'
                     ? 'bg-rose-100 text-rose-700'
                     : 'bg-amber-100 text-amber-700'
-                }`}>
+                  }`}>
                   <span>{currentCustomer.status || 'ACTIVE'}</span>
-                  <span className={`w-2 h-2 rounded-full ${
-                    currentCustomer.status === 'active' || !currentCustomer.status
-                      ? 'bg-[#16a34a]'
-                      : currentCustomer.status === 'lost'
+                  <span className={`w-2 h-2 rounded-full ${currentCustomer.status === 'active' || !currentCustomer.status
+                    ? 'bg-[#16a34a]'
+                    : currentCustomer.status === 'lost'
                       ? 'bg-rose-600'
                       : 'bg-amber-600'
-                  }`} />
+                    }`} />
                 </span>
               </div>
               <p className="text-sm text-slate-400 font-medium mt-0.5">
@@ -441,7 +439,7 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
             onClick={() => setIsNewSaleModalOpen(true)}
             className="py-3 px-4 rounded-xl bg-[#00875a] hover:bg-[#00704a] text-white text-sm font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
           >
-            <Plus className="w-4 h-4 stroke-[3]" />
+            <Plus className="w-4 h-4" />
             <span>New Sale</span>
           </button>
         </div>
@@ -466,24 +464,22 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
         <div className="space-y-2 text-xs sm:text-sm">
           <div className="flex items-center justify-between">
             <span className="text-slate-600 font-semibold">Handwash:</span>
-            <span className={`font-bold ${
-              hw.status === 'overdue' ? 'text-red-600' :
+            <span className={`font-bold ${hw.status === 'overdue' ? 'text-red-600' :
               hw.status === 'approaching' ? 'text-amber-600' :
-              hw.status === 'healthy' ? 'text-emerald-600' :
-              'text-slate-500 font-medium'
-            }`}>
+                hw.status === 'healthy' ? 'text-emerald-600' :
+                  'text-slate-500 font-medium'
+              }`}>
               {hw.badgeText || 'No purchase history'}
             </span>
           </div>
 
           <div className="flex items-center justify-between">
             <span className="text-slate-600 font-semibold">Tissue:</span>
-            <span className={`font-bold ${
-              ts.status === 'overdue' ? 'text-red-600' :
+            <span className={`font-bold ${ts.status === 'overdue' ? 'text-red-600' :
               ts.status === 'approaching' ? 'text-amber-600' :
-              ts.status === 'healthy' ? 'text-emerald-600' :
-              'text-slate-500 font-medium'
-            }`}>
+                ts.status === 'healthy' ? 'text-emerald-600' :
+                  'text-slate-500 font-medium'
+              }`}>
               {ts.badgeText || 'No purchase history'}
             </span>
           </div>
@@ -532,9 +528,8 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
       <div className="bg-white border border-slate-100 rounded-3xl p-5 sm:p-6 shadow-xs transition-all duration-200">
         <div
           onClick={() => setIsCustomerInfoExpanded(prev => !prev)}
-          className={`w-full flex items-center justify-between text-left cursor-pointer group ${
-            isCustomerInfoExpanded ? 'mb-4 pb-3 border-b border-slate-100' : ''
-          }`}
+          className={`w-full flex items-center justify-between text-left cursor-pointer group ${isCustomerInfoExpanded ? 'mb-4 pb-3 border-b border-slate-100' : ''
+            }`}
           role="button"
           tabIndex={0}
           onKeyDown={(e) => {
@@ -679,14 +674,13 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
               const items = saleItems.filter(si => si.saleId === sale.id);
 
               return (
-                <div 
+                <div
                   key={sale.id}
-                  className={`border rounded-xl transition-all ${
-                    isExpanded ? 'border-emerald-300 bg-slate-50/50 shadow-xs' : 'border-slate-200/90 bg-white hover:border-slate-300'
-                  }`}
+                  className={`border rounded-xl transition-all ${isExpanded ? 'border-emerald-300 bg-slate-50/50 shadow-xs' : 'border-slate-200/90 bg-white hover:border-slate-300'
+                    }`}
                 >
                   {/* Clean Compact Horizontal Transaction Row */}
-                  <div 
+                  <div
                     onClick={() => handleToggleExpandSale(sale.id)}
                     className="p-2.5 sm:p-3 flex flex-col md:flex-row md:items-center justify-between gap-2.5 md:gap-3 cursor-pointer select-none"
                   >

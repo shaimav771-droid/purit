@@ -45,6 +45,20 @@ export const EditActivityModal: React.FC = () => {
   const [dueDate, setDueDate] = useState<string>('');
   const [remarks, setRemarks] = useState<string>('');
   const [assignedTo, setAssignedTo] = useState<string>('');
+
+  // Dispenser Details (3 Options: Number of Dispenser, Cost for One, Total Cost)
+  const [dispenserCount, setDispenserCount] = useState<string>('');
+  const [costPerDispenser, setCostPerDispenser] = useState<string>('');
+
+  // Service Cost (Only shown when Service task is selected)
+  const [serviceCost, setServiceCost] = useState<string>('');
+
+  const totalDispenserCost = React.useMemo(() => {
+    const qty = parseFloat(dispenserCount) || 0;
+    const cost = parseFloat(costPerDispenser) || 0;
+    return qty > 0 && cost > 0 ? qty * cost : 0;
+  }, [dispenserCount, costPerDispenser]);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -58,6 +72,9 @@ export const EditActivityModal: React.FC = () => {
       setDueDate(selectedActivityForEdit.dueDate || '');
       setRemarks(selectedActivityForEdit.remarks || '');
       setAssignedTo(selectedActivityForEdit.assignedTo || '');
+      setDispenserCount(selectedActivityForEdit.dispenserCount ? String(selectedActivityForEdit.dispenserCount) : '');
+      setCostPerDispenser(selectedActivityForEdit.costPerDispenser ? String(selectedActivityForEdit.costPerDispenser) : '');
+      setServiceCost(selectedActivityForEdit.serviceCost ? String(selectedActivityForEdit.serviceCost) : '');
       setShowDeleteConfirm(false);
     }
   }, [selectedActivityForEdit]);
@@ -112,6 +129,13 @@ export const EditActivityModal: React.FC = () => {
       const overallStatus = calculateVisitStatus(tasks);
       const uniqueTypes = Array.from(new Set(tasks.map(t => normalizeTaskTypeName(t.type))));
       const combinedLabel = uniqueTypes.join(' + ');
+      const hasFittingTask = tasks.some(t => normalizeTaskTypeName(t.type) === 'Dispenser Fitting');
+      const hasServiceTask = tasks.some(t => normalizeTaskTypeName(t.type) === 'Dispenser Service');
+
+      const numDispensers = hasFittingTask ? (parseFloat(dispenserCount) || undefined) : undefined;
+      const costOne = hasFittingTask ? (parseFloat(costPerDispenser) || undefined) : undefined;
+      const totCost = hasFittingTask ? (totalDispenserCost || undefined) : undefined;
+      const servCost = hasServiceTask ? (parseFloat(serviceCost) || undefined) : undefined;
 
       await updateActivity(selectedActivityForEdit.id, {
         tasks,
@@ -125,6 +149,10 @@ export const EditActivityModal: React.FC = () => {
         dueDate,
         remarks: remarks.trim(),
         assignedTo: assignedTo.trim() || undefined,
+        dispenserCount: numDispensers,
+        costPerDispenser: costOne,
+        totalDispenserCost: totCost,
+        serviceCost: servCost,
         completedAt: overallStatus === 'completed' ? (selectedActivityForEdit.completedAt || new Date().toISOString()) : null,
       });
       setSelectedActivityForEdit(null);
@@ -402,6 +430,80 @@ export const EditActivityModal: React.FC = () => {
               className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:border-emerald-600"
             />
           </div>
+
+          {/* Dispenser Details (3 Options) - Only shown when 'Dispenser Fitting' task is selected */}
+          {tasks.some(t => normalizeTaskTypeName(t.type) === 'Dispenser Fitting') && (
+            <div className="space-y-1.5 pt-1.5 border-t border-slate-100">
+              <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block flex items-center gap-1">
+                <Wrench className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Dispenser Details</span>
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="text-[10px] font-semibold text-slate-500 block mb-0.5">
+                    Number of Dispenser
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="e.g. 2"
+                    value={dispenserCount}
+                    onChange={(e) => setDispenserCount(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-emerald-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-semibold text-slate-500 block mb-0.5">
+                    Cost for One
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-medium">₹</span>
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="0.00"
+                      value={costPerDispenser}
+                      onChange={(e) => setCostPerDispenser(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-6 pr-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-emerald-600"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-semibold text-slate-500 block mb-0.5">
+                    Total Cost
+                  </label>
+                  <div className="w-full bg-emerald-50/80 border border-emerald-200/90 rounded-xl px-2.5 py-1.5 text-xs font-bold text-emerald-800 flex items-center h-[33px]">
+                    ₹{totalDispenserCost ? totalDispenserCost.toLocaleString('en-IN') : '0'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Service Cost Option - Only shown when 'Dispenser Service' task is selected */}
+          {tasks.some(t => normalizeTaskTypeName(t.type) === 'Dispenser Service') && (
+            <div className="space-y-1.5 pt-1.5 border-t border-slate-100">
+              <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block flex items-center gap-1">
+                <Settings2 className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Service Cost</span>
+              </label>
+              <div className="max-w-[200px]">
+                <div className="relative">
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-medium">₹</span>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="0.00"
+                    value={serviceCost}
+                    onChange={(e) => setServiceCost(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-6 pr-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-600 font-semibold"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className="flex items-center justify-between pt-3 border-t border-slate-100">
