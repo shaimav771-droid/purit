@@ -36,6 +36,7 @@ export const BottomNav: React.FC = () => {
     setIsAddExpenseModalOpen,
     setIsAddProductModalOpen,
     setIsAddActivityModalOpen,
+    setSelectedActivityType,
   } = useApp();
 
   const [isMoreOpen, setIsMoreOpen] = useState(false);
@@ -52,11 +53,27 @@ export const BottomNav: React.FC = () => {
       setSelectedCustomerId(null);
     }
     setIsMoreOpen(false);
+    setIsFabOpen(false);
   };
 
   const handleFabClick = () => {
-    setIsFabOpen(false);
-    setIsNewSaleModalOpen(true);
+    if (activeTab === 'activities') {
+      setIsFabOpen(false);
+      setSelectedActivityType('Dispenser Fitting');
+      setIsAddActivityModalOpen(true);
+      return;
+    }
+    if (activeTab === 'sales') {
+      setIsFabOpen(false);
+      setIsNewSaleModalOpen(true);
+      return;
+    }
+    if (activeTab === 'inventory') {
+      setIsFabOpen(false);
+      setIsAddProductModalOpen(true);
+      return;
+    }
+    setIsFabOpen(!isFabOpen);
   };
 
   return (

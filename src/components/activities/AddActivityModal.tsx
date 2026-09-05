@@ -640,8 +640,8 @@ export const AddActivityModal: React.FC = () => {
                       : 'text-slate-500 hover:text-slate-800'
                   }`}
                 >
-                  <Plus className="w-3 h-3" />
-                  <span>+ New</span>
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>New</span>
                 </button>
               </div>
             </div>
@@ -984,10 +984,10 @@ export const AddActivityModal: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleAddDeliveryItem}
-                  className="text-xs font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 cursor-pointer"
+                  className="text-xs font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 cursor-pointer shrink-0"
                 >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>+ Add Product</span>
+                  <Plus className="w-4 h-4" />
+                  <span>Add Product</span>
                 </button>
               </div>
 

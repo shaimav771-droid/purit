@@ -127,7 +127,7 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
             className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-600/20"
           >
             <Plus className="w-4 h-4" />
-            <span>+ New Sale</span>
+            <span>New Sale</span>
           </button>
         </div>
       </div>

@@ -221,19 +221,32 @@ export const InventoryView: React.FC = () => {
 
         {/* Category Filter Icon Button & Pop-Up */}
         {activeTab === 'catalog' && (
-          <div className="relative">
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => setIsCategoryModalOpen(!isCategoryModalOpen)}
-              className={`px-3 py-1.5 rounded-xl border transition-all flex items-center gap-1.5 cursor-pointer ${
-                categoryFilter !== 'all'
-                  ? 'bg-emerald-100 border-emerald-300 text-emerald-900 font-bold'
-                  : 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700'
-              }`}
-              title="Filter by Category"
+              onClick={() => {
+                setProductToEdit(null);
+                setIsAddProductModalOpen(true);
+              }}
+              className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+              title="Add New Catalog Product"
             >
-              <Filter className="w-4 h-4 text-emerald-600" />
-              <span className="capitalize text-xs">{categoryFilter === 'all' ? 'Filter' : categoryFilter}</span>
+              <Plus className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Add Product</span>
             </button>
+
+            <div className="relative">
+              <button
+                onClick={() => setIsCategoryModalOpen(!isCategoryModalOpen)}
+                className={`px-3 py-1.5 rounded-xl border transition-all flex items-center gap-1.5 cursor-pointer ${
+                  categoryFilter !== 'all'
+                    ? 'bg-emerald-100 border-emerald-300 text-emerald-900 font-bold'
+                    : 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700'
+                }`}
+                title="Filter by Category"
+              >
+                <Filter className="w-4 h-4 text-emerald-600" />
+                <span className="capitalize text-xs">{categoryFilter === 'all' ? 'Filter' : categoryFilter}</span>
+              </button>
 
             {/* Category Selection Pop-up */}
             {isCategoryModalOpen && (
@@ -271,6 +284,7 @@ export const InventoryView: React.FC = () => {
                 </div>
               </>
             )}
+            </div>
           </div>
         )}
       </div>
@@ -456,15 +470,14 @@ export const InventoryView: React.FC = () => {
         </div>
       )}
 
-      {/* Add / Edit Product Modal */}
-      <AddProductModal
-        isOpen={isAddProductModalOpen || !!productToEdit}
-        onClose={() => {
-          setIsAddProductModalOpen(false);
-          setProductToEdit(null);
-        }}
-        productToEdit={productToEdit}
-      />
+      {/* Edit Product Modal */}
+      {productToEdit && (
+        <AddProductModal
+          isOpen={true}
+          onClose={() => setProductToEdit(null)}
+          productToEdit={productToEdit}
+        />
+      )}
 
       {/* Add Stock Modal */}
       <AddStockModal
