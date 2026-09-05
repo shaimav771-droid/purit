@@ -17,6 +17,8 @@ import {
 import { formatCurrency } from '../../lib/dateUtils';
 import { getCustomerCanonicalKey } from '../../lib/activityUtils';
 
+import { Customer, Activity, Sale } from '../../types';
+
 const getInitials = (name: string): string => {
   if (!name) return 'CU';
   const parts = name.trim().split(/\s+/);
@@ -26,16 +28,113 @@ const getInitials = (name: string): string => {
   return name.slice(0, 2).toUpperCase();
 };
 
+export const getCustomerLastVisitDate = (
+  customer: Customer,
+  activities: Activity[] = [],
+  sales: Sale[] = [],
+  customersList: Customer[] = []
+): string | null => {
+  if (!customer) return null;
+  const customerId = customer.id || (customer as any)._id || customer.restaurantName;
+  const restName = customer.restaurantName ? customer.restaurantName.trim().toLowerCase() : '';
+  const legalName = customer.legalName ? customer.legalName.trim().toLowerCase() : '';
+
+  let maxTime = -Infinity;
+  let latestDateStr: string | null = null;
+
+  // 1. Check completed operational activities (Fitting, Service, Delivery)
+  (activities || []).forEach(act => {
+    if (!act) return;
+
+    let isMatch = false;
+    if (act.customerId && (act.customerId === customerId || act.customerId === customer.id || ((customer as any)._id && act.customerId === (customer as any)._id))) {
+      isMatch = true;
+    } else {
+      const canonical = getCustomerCanonicalKey(act.customerId, act.customerName, customersList);
+      if (canonical.id === customerId || canonical.id === customer.id) {
+        isMatch = true;
+      }
+    }
+
+    if (!isMatch) return;
+
+    // Check if activity is a completed operational activity
+    const isCompleted = act.status === 'completed' || !!act.completedAt || (Array.isArray(act.tasks) && act.tasks.some(t => t.status === 'completed'));
+    if (!isCompleted) return;
+
+    const dateCandidate = act.completedAt
+      ? act.completedAt.split('T')[0]
+      : act.dueDate
+      ? act.dueDate.split('T')[0]
+      : act.createdAt
+      ? act.createdAt.split('T')[0]
+      : null;
+
+    if (dateCandidate) {
+      const t = new Date(dateCandidate).getTime();
+      if (!isNaN(t) && t > maxTime) {
+        maxTime = t;
+        latestDateStr = dateCandidate;
+      }
+    }
+  });
+
+  // 2. Check invoice / sales dates
+  (sales || []).forEach(s => {
+    if (!s || s.paymentStatus === 'cancelled') return;
+
+    let isMatch = false;
+    if (s.customerId && (s.customerId === customerId || s.customerId === customer.id || ((customer as any)._id && s.customerId === (customer as any)._id))) {
+      isMatch = true;
+    } else if (s.customerName) {
+      const sName = s.customerName.trim().toLowerCase();
+      if (restName && restName !== 'customer' && (sName === restName || sName.includes(restName) || restName.includes(sName))) {
+        isMatch = true;
+      } else if (legalName && (sName === legalName || sName.includes(legalName) || legalName.includes(sName))) {
+        isMatch = true;
+      }
+    }
+
+    if (!isMatch) return;
+
+    const dateCandidate = s.saleDate
+      ? s.saleDate.split('T')[0]
+      : s.createdAt
+      ? s.createdAt.split('T')[0]
+      : null;
+
+    if (dateCandidate) {
+      const t = new Date(dateCandidate).getTime();
+      if (!isNaN(t) && t > maxTime) {
+        maxTime = t;
+        latestDateStr = dateCandidate;
+      }
+    }
+  });
+
+  // 3. Check customer.latestPurchaseDate
+  if (customer.latestPurchaseDate) {
+    const dateCandidate = customer.latestPurchaseDate.split('T')[0];
+    const t = new Date(dateCandidate).getTime();
+    if (!isNaN(t) && t > maxTime) {
+      maxTime = t;
+      latestDateStr = dateCandidate;
+    }
+  }
+
+  return latestDateStr;
+};
+
 const formatLastVisitDate = (dateStr?: string | null): string => {
   if (!dateStr) return 'No Visits';
   try {
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return dateStr;
-    const day = String(d.getDate()).padStart(2, '0');
+    const day = d.getDate();
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const month = monthNames[d.getMonth()];
     const year = d.getFullYear();
-    return `${day}-${month}-${year}`;
+    return `${day} ${month} ${year}`;
   } catch {
     return dateStr;
   }
@@ -101,6 +200,7 @@ export const CustomersView: React.FC = () => {
   const {
     customers,
     activities,
+    sales,
     selectedCustomerId,
     setSelectedCustomerId,
     settings,
@@ -205,9 +305,9 @@ export const CustomersView: React.FC = () => {
     // 3. Sort Order
     result.sort((a, b) => {
       if (sortBy === 'latest_date') {
-        const dateA = a.latestPurchaseDate || a.createdAt;
-        const dateB = b.latestPurchaseDate || b.createdAt;
-        return new Date(dateB).getTime() - new Date(dateA).getTime();
+        const lastVisitA = getCustomerLastVisitDate(a, activities, sales, customers) || a.createdAt;
+        const lastVisitB = getCustomerLastVisitDate(b, activities, sales, customers) || b.createdAt;
+        return new Date(lastVisitB).getTime() - new Date(lastVisitA).getTime();
       }
       if (sortBy === 'highest_sales') {
         return (b.totalInvoicedSales || 0) - (a.totalInvoicedSales || 0);
@@ -230,7 +330,7 @@ export const CustomersView: React.FC = () => {
     });
 
     return result;
-  }, [customers, searchQuery, activeFilterTab, sortBy, customerRepurchaseMap]);
+  }, [customers, searchQuery, activeFilterTab, sortBy, customerRepurchaseMap, activities, sales]);
 
   // If a specific customer is selected, show their full detail profile
   if (selectedCustomerId) {
@@ -498,51 +598,24 @@ export const CustomersView: React.FC = () => {
           {filteredCustomers.map((customer) => {
             const customerId = customer.id || (customer as any)._id || customer.restaurantName;
 
-            // 1. Dynamic Data Fetching: Find completed or scheduled Operational Visits for this customer
-            const customerActivities = (activities || []).filter(act => {
-              if (!act) return false;
-              if (act.customerId && (act.customerId === customerId || act.customerId === customer.id)) {
-                return true;
-              }
-              const canonical = getCustomerCanonicalKey(act.customerId, act.customerName, customers);
-              return canonical.id === customerId;
-            });
-
-            // Dynamically compute the most recent visit date ("Last Visit") for that customer
-            let lastVisitDateStr: string | null = null;
-            if (customerActivities.length > 0) {
-              let maxTime = -Infinity;
-              customerActivities.forEach(act => {
-                const dateStr = act.completedAt
-                  ? act.completedAt.split('T')[0]
-                  : act.dueDate
-                  ? act.dueDate.split('T')[0]
-                  : act.createdAt
-                  ? act.createdAt.split('T')[0]
-                  : null;
-                
-                if (dateStr) {
-                  const t = new Date(dateStr).getTime();
-                  if (!isNaN(t) && t > maxTime) {
-                    maxTime = t;
-                    lastVisitDateStr = dateStr;
-                  }
-                }
-              });
-            }
+            // Dynamically compute the most recent visit date ("Last Visit") by checking completed activities & sales/invoices
+            const lastVisitDateStr = getCustomerLastVisitDate(customer, activities, sales, customers);
 
             // Relative elapsed time and red alert logic (>= 7 days ago)
             const { relativeStr, isRedAlert } = getRelativeVisitTime(lastVisitDateStr);
             const lastVisitFormatted = formatLastVisitDate(lastVisitDateStr);
 
+            const repSummary = customerRepurchaseMap?.get(customerId);
+            const isOverdueStatus = customer.status === 'overdue' || repSummary?.overallRepurchaseStatus === 'overdue';
+
             return (
               <div
                 key={customerId}
                 onClick={() => handleSelectCustomer(customer)}
-                className={`rounded-2xl border p-3.5 sm:p-4 shadow-2xs hover:shadow-md transition-all cursor-pointer flex flex-col gap-3 group min-w-0 ${
+                className={`rounded-2xl p-3.5 sm:p-4 shadow-2xs hover:shadow-md transition-all cursor-pointer flex flex-col gap-3 group min-w-0 ${
                   isRedAlert
-                    ? 'bg-red-50/20 border-red-300 hover:border-red-400 hover:bg-red-50/30'
-                    : 'bg-white border-slate-200/90 hover:border-emerald-400/80'
+                    ? 'bg-red-50/40 border-2 border-red-500 hover:border-red-600 hover:bg-red-50/60 ring-1 ring-red-500/20'
+                    : 'bg-white border border-slate-200/90 hover:border-emerald-400/80'
                 }`}
               >
                 {/* Main Card Content */}
@@ -564,14 +637,16 @@ export const CustomersView: React.FC = () => {
                           </h3>
                           <span
                             className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider shrink-0 border ${
-                              customer.status === 'active' || !customer.status
+                              isOverdueStatus
+                                ? 'bg-red-100 text-red-800 border-red-300 font-black'
+                                : customer.status === 'active' || !customer.status
                                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                 : customer.status === 'lost'
                                 ? 'bg-rose-50 text-rose-700 border-rose-200'
                                 : 'bg-amber-50 text-amber-700 border-amber-200'
                             }`}
                           >
-                            {customer.status === 'due_soon' ? 'DUE SOON' : (customer.status || 'ACTIVE')}
+                            {customer.status === 'due_soon' ? 'DUE SOON' : isOverdueStatus ? 'OVERDUE' : (customer.status || 'ACTIVE')}
                           </span>
                         </div>
 
@@ -627,7 +702,7 @@ export const CustomersView: React.FC = () => {
                 </div>
 
                 {/* Card Footer UI Row */}
-                <div className={`pt-2.5 border-t ${isRedAlert ? 'border-red-200/70' : 'border-slate-100'} flex items-center justify-between text-xs font-semibold`}>
+                <div className={`pt-2.5 border-t ${isRedAlert ? 'border-red-300' : 'border-slate-100'} flex items-center justify-between text-xs font-semibold`}>
                   <div className="flex items-center gap-1.5 text-slate-500">
                     <Calendar className={`w-3.5 h-3.5 ${isRedAlert ? 'text-red-500' : 'text-slate-400'}`} />
                     <span>
@@ -636,7 +711,7 @@ export const CustomersView: React.FC = () => {
                   </div>
                   <div className={`px-2.5 py-0.5 rounded-md text-[11px] font-extrabold tracking-tight ${
                     isRedAlert
-                      ? 'bg-red-100 text-red-700 border border-red-200/80 shadow-2xs'
+                      ? 'bg-red-100 text-red-800 border border-red-300 shadow-2xs font-bold'
                       : 'bg-slate-100 text-slate-600 border border-slate-200/50'
                   }`}>
                     {relativeStr}

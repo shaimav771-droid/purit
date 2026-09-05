@@ -67,6 +67,7 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isLostModalOpen, setIsLostModalOpen] = useState(false);
   const [expandedSaleIds, setExpandedSaleIds] = useState<Set<string>>(new Set());
+  const [isCustomerInfoExpanded, setIsCustomerInfoExpanded] = useState(false);
 
   const targetCustomerId = propsCustomerId || selectedCustomerId;
   const onBack = propsOnBack || (() => setSelectedCustomerId(null));
@@ -438,84 +439,102 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
       </div>
 
       {/* 3. CUSTOMER INFORMATION SECTION (Vertical stacked layout matching reference image) */}
-      <div className="bg-white border border-slate-100 rounded-3xl p-5 sm:p-6 shadow-xs">
-        <h2 className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wider mb-4 pb-3 border-b border-slate-100 flex items-center gap-2">
-          <Building2 className="w-4.5 h-4.5 text-emerald-600" />
-          Customer Information
-        </h2>
-
-        <div className="space-y-4">
-          {/* 1. CUSTOMER NAME */}
-          <div className="space-y-1">
-            <span className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider block">
-              Customer Name
-            </span>
-            <div className="font-extrabold text-base text-slate-900">
-              {currentCustomer.restaurantName}
-            </div>
-            {currentCustomer.legalName && (
-              <div className="text-slate-500 text-xs font-medium">
-                Legal: {currentCustomer.legalName}
-              </div>
+      <div className="bg-white border border-slate-100 rounded-3xl p-5 sm:p-6 shadow-xs transition-all duration-200">
+        <button
+          type="button"
+          onClick={() => setIsCustomerInfoExpanded(prev => !prev)}
+          className={`w-full flex items-center justify-between text-left focus:outline-none cursor-pointer group ${
+            isCustomerInfoExpanded ? 'mb-4 pb-3 border-b border-slate-100' : ''
+          }`}
+          aria-expanded={isCustomerInfoExpanded}
+        >
+          <h2 className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+            <Building2 className="w-4.5 h-4.5 text-emerald-600" />
+            Customer Information
+          </h2>
+          <div className="p-1 text-slate-400 group-hover:text-slate-600 transition-colors">
+            {isCustomerInfoExpanded ? (
+              <ChevronUp className="w-5 h-5" />
+            ) : (
+              <ChevronDown className="w-5 h-5" />
             )}
           </div>
+        </button>
 
-          {/* 2. PHONE NUMBER */}
-          <div className="space-y-1">
-            <span className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider block">
-              Phone Number
-            </span>
-            <div className="font-extrabold text-sm sm:text-base text-slate-900 flex items-center gap-2">
-              <Phone className="w-4 h-4 text-slate-400 shrink-0 stroke-[1.75]" />
-              <a href={`tel:${currentCustomer.phone}`} className="hover:text-emerald-600 transition-colors">
-                {currentCustomer.phone || 'N/A'}
-              </a>
+        {isCustomerInfoExpanded && (
+          <div className="space-y-4">
+            {/* 1. CUSTOMER NAME */}
+            <div className="space-y-1">
+              <span className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider block">
+                Customer Name
+              </span>
+              <div className="font-extrabold text-base text-slate-900">
+                {currentCustomer.restaurantName}
+              </div>
+              {currentCustomer.legalName && (
+                <div className="text-slate-500 text-xs font-medium">
+                  Legal: {currentCustomer.legalName}
+                </div>
+              )}
+            </div>
+
+            {/* 2. PHONE NUMBER */}
+            <div className="space-y-1">
+              <span className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider block">
+                Phone Number
+              </span>
+              <div className="font-extrabold text-sm sm:text-base text-slate-900 flex items-center gap-2">
+                <Phone className="w-4 h-4 text-slate-400 shrink-0 stroke-[1.75]" />
+                <a href={`tel:${currentCustomer.phone}`} className="hover:text-emerald-600 transition-colors">
+                  {currentCustomer.phone || 'N/A'}
+                </a>
+              </div>
+            </div>
+
+            {/* 3. EMAIL ADDRESS */}
+            <div className="space-y-1">
+              <span className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider block">
+                Email Address
+              </span>
+              <div className="font-semibold text-sm text-slate-800 flex items-center gap-2">
+                <Mail className="w-4 h-4 text-slate-400 shrink-0 stroke-[1.75]" />
+                <span>{currentCustomer.email || 'N/A'}</span>
+              </div>
+            </div>
+
+            {/* 4. ADDRESS */}
+            <div className="space-y-1">
+              <span className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider block">
+                Address
+              </span>
+              <div className="font-semibold text-sm text-slate-800 flex items-start gap-2 leading-relaxed">
+                <MapPin className="w-4 h-4 text-slate-400 shrink-0 mt-0.5 stroke-[1.75]" />
+                <span>{currentCustomer.address || currentCustomer.billingAddress || 'N/A'}</span>
+              </div>
+            </div>
+
+            {/* 5. GSTIN */}
+            <div className="space-y-1">
+              <span className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider block">
+                GSTIN
+              </span>
+              <div className="font-extrabold text-sm text-slate-900">
+                {currentCustomer.gstin || (currentCustomer.gstEnabled ? 'Active (Pending No.)' : 'N/A')}
+              </div>
+            </div>
+
+            {/* 6. CUSTOMER SINCE */}
+            <div className="space-y-1">
+              <span className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider block">
+                Customer Since
+              </span>
+              <div className="font-semibold text-sm text-slate-800 flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-slate-400 shrink-0 stroke-[1.75]" />
+                <span>{formatDate(currentCustomer.createdAt)}</span>
+              </div>
             </div>
           </div>
-
-          {/* 3. EMAIL ADDRESS */}
-          <div className="space-y-1">
-            <span className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider block">
-              Email Address
-            </span>
-            <div className="font-semibold text-sm text-slate-800 flex items-center gap-2">
-              <Mail className="w-4 h-4 text-slate-400 shrink-0 stroke-[1.75]" />
-              <span>{currentCustomer.email || 'N/A'}</span>
-            </div>
-          </div>
-
-          {/* 4. ADDRESS */}
-          <div className="space-y-1">
-            <span className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider block">
-              Address
-            </span>
-            <div className="font-semibold text-sm text-slate-800 flex items-start gap-2 leading-relaxed">
-              <MapPin className="w-4 h-4 text-slate-400 shrink-0 mt-0.5 stroke-[1.75]" />
-              <span>{currentCustomer.address || currentCustomer.billingAddress || 'N/A'}</span>
-            </div>
-          </div>
-
-          {/* 5. GSTIN */}
-          <div className="space-y-1">
-            <span className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider block">
-              GSTIN
-            </span>
-            <div className="font-extrabold text-sm text-slate-900">
-              {currentCustomer.gstin || (currentCustomer.gstEnabled ? 'Active (Pending No.)' : 'N/A')}
-            </div>
-          </div>
-
-          {/* 6. CUSTOMER SINCE */}
-          <div className="space-y-1">
-            <span className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider block">
-              Customer Since
-            </span>
-            <div className="font-semibold text-sm text-slate-800 flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-slate-400 shrink-0 stroke-[1.75]" />
-              <span>{formatDate(currentCustomer.createdAt)}</span>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* 4. SALES HISTORY SECTION */}

@@ -301,14 +301,14 @@ export const DashboardView: React.FC = () => {
             {overdueCustomers.map((item) => (
               <div
                 key={item.customer.id}
-                className="bg-rose-50/40 border border-rose-200 rounded-2xl p-4 flex flex-col justify-between hover:border-rose-300 transition-all shadow-2xs"
+                className="bg-red-50/40 border-2 border-red-500 rounded-2xl p-4 flex flex-col justify-between hover:border-red-600 transition-all shadow-2xs ring-1 ring-red-500/20"
               >
                 <div>
                   <div className="flex items-start justify-between gap-2">
                     <h3 className="font-bold text-sm text-slate-900 leading-snug">
                       {item.customer.restaurantName}
                     </h3>
-                    <span className="px-2 py-0.5 rounded-full bg-rose-600 text-white text-[11px] font-black shrink-0">
+                    <span className="px-2 py-0.5 rounded-full bg-red-600 text-white text-[11px] font-black shrink-0 shadow-2xs">
                       OVERDUE
                     </span>
                   </div>
@@ -317,23 +317,23 @@ export const DashboardView: React.FC = () => {
                     Phone: {item.customer.phone}
                   </div>
 
-                  <div className="mt-3 space-y-1.5 text-xs bg-white p-2.5 rounded-xl border border-rose-100">
+                  <div className="mt-3 space-y-1.5 text-xs bg-white p-2.5 rounded-xl border border-red-200/80">
                     <div className="flex justify-between items-center">
                       <span className="text-slate-500">Handwash:</span>
-                      <span className={`font-semibold ${item.handwash.status === 'overdue' ? 'text-rose-600' : 'text-slate-700'}`}>
+                      <span className={`font-semibold ${item.handwash.status === 'overdue' ? 'text-red-600 font-bold' : 'text-slate-700'}`}>
                         {item.handwash.badgeText}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-slate-500">Tissue:</span>
-                      <span className={`font-semibold ${item.tissue.status === 'overdue' ? 'text-rose-600' : 'text-slate-700'}`}>
+                      <span className={`font-semibold ${item.tissue.status === 'overdue' ? 'text-red-600 font-bold' : 'text-slate-700'}`}>
                         {item.tissue.badgeText}
                       </span>
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-3 pt-3 border-t border-rose-100 flex items-center justify-between gap-2">
+                <div className="mt-3 pt-3 border-t border-red-200/80 flex items-center justify-between gap-2">
                   <button
                     onClick={() => {
                       setSelectedCustomerId(item.customer.id);
