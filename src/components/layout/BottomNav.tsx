@@ -10,14 +10,8 @@ import {
   CreditCard,
   BarChart3,
   Settings,
-  Pipette,
   X,
   Plus,
-  ArrowUpRight,
-  TrendingUp,
-  Lock,
-  Unlock,
-  Wrench
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -27,10 +21,8 @@ export const BottomNav: React.FC = () => {
     setActiveTab,
     overdueCustomers,
     products,
-    sales,
     activities,
     isDashboardUnlocked,
-    selectedCustomerId,
     setSelectedCustomerId,
     setIsNewSaleModalOpen,
     setIsAddCustomerModalOpen,
@@ -82,14 +74,10 @@ export const BottomNav: React.FC = () => {
 
   return (
     <>
-
       {/* Floating Action Button (FAB) for Quick Entry on Mobile */}
       {activeTab !== 'customers' && (
-        <div className="md:hidden fixed bottom-20 right-4 z-40">
-
-          {/* Floating Action Button (FAB) for Quick Entry */}
-          <div className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-40">
-
+        <div className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-40">
+          <AnimatePresence>
             {isFabOpen && (
               <>
                 <div
@@ -283,7 +271,7 @@ export const BottomNav: React.FC = () => {
         id="mobile-bottom-nav"
         className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200/90 px-2 py-1.5 flex items-center justify-around shadow-lg"
       >
-        {/* 1. Activities (FIRST TAB) */}
+        {/* 1. Activities */}
         <button
           onClick={() => handleNavClick('activities')}
           className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all relative ${activeTab === 'activities' ? 'text-emerald-700 font-bold' : 'text-slate-500 font-medium'
