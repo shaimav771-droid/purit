@@ -13,13 +13,17 @@ import {
   Calendar,
   ChevronDown,
   ChevronUp,
-  Wrench
+  Wrench,
+  RefreshCw,
+  Clock
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../lib/dateUtils';
 import { downloadInvoicePDF } from '../../lib/pdfGenerator';
 import { CustomerFormModal } from './CustomerFormModal';
 import { MarkAsLostModal } from './MarkAsLostModal';
 import { Customer, Sale } from '../../types';
+import { calculateConsumption } from '../../lib/consumptionEngine';
+import { getCustomerLastVisitDate, formatLastVisitDate, getRelativeVisitTime } from './CustomersView';
 
 const DUMMY_CUSTOMER: Customer = {
   id: '',
@@ -57,6 +61,8 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
     saleItems,
     dispensers,
     dispenserReplacements,
+    activities,
+    customerRepurchaseMap,
     settings,
     setIsNewSaleModalOpen,
     setIsAddPaymentModalOpen,
@@ -213,6 +219,52 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
     return dispensersCost + replacementsCost;
   }, [customerDispensers, customerReplacements]);
 
+  // Dispensers Count
+  const dispensersCount = currentCustomer.dispensersCount || customerDispensers.length || 0;
+
+  // Last Visit Calculation (matching Customer Directory format)
+  const lastVisitDateStr = useMemo(() => {
+    return getCustomerLastVisitDate(currentCustomer, activities, sales, customers);
+  }, [currentCustomer, activities, sales, customers]);
+
+  const { relativeStr, isRedAlert } = useMemo(() => {
+    return getRelativeVisitTime(lastVisitDateStr);
+  }, [lastVisitDateStr]);
+
+  const lastVisitFormatted = useMemo(() => {
+    return formatLastVisitDate(lastVisitDateStr);
+  }, [lastVisitDateStr]);
+
+  // Rolling Repurchase Status (Handwash & Tissue)
+  const custId = currentCustomer.id || (currentCustomer as any)._id;
+  const repSummary = customerRepurchaseMap?.get(custId);
+  
+  const hw = useMemo(() => {
+    return repSummary?.handwash || calculateConsumption(custId, 'handwash', sales, saleItems);
+  }, [repSummary, custId, sales, saleItems]);
+
+  const ts = useMemo(() => {
+    return repSummary?.tissue || calculateConsumption(custId, 'tissue', sales, saleItems);
+  }, [repSummary, custId, sales, saleItems]);
+
+  const lastPurchaseDateStr = useMemo(() => {
+    const dates = [hw?.latestPurchaseDate, ts?.latestPurchaseDate].filter(Boolean) as string[];
+    if (dates.length > 0) {
+      dates.sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+      return formatDate(dates[0]);
+    }
+    if (lastVisitDateStr) {
+      return lastVisitFormatted;
+    }
+    return '—';
+  }, [hw?.latestPurchaseDate, ts?.latestPurchaseDate, lastVisitDateStr, lastVisitFormatted]);
+
+  const overallRepurchaseStatus = repSummary?.overallRepurchaseStatus || (
+    (hw.status === 'overdue' || ts.status === 'overdue') ? 'overdue' :
+    (hw.status === 'approaching' || ts.status === 'approaching') ? 'approaching' :
+    (hw.status === 'healthy' || ts.status === 'healthy') ? 'healthy' : 'insufficient_data'
+  );
+
   const handleToggleExpandSale = (saleId: string) => {
     setExpandedSaleIds(prev => {
       const next = new Set(prev);
@@ -361,17 +413,7 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
             </div>
           </div>
 
-          {/* Edit Button */}
-          <div className="flex items-center gap-3 pt-0.5">
-            {/* Dark Navy "Edit" Button */}
-            <button
-              onClick={() => setIsEditModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0f172a] hover:bg-[#1e293b] text-white text-sm font-semibold transition-colors cursor-pointer shadow-xs"
-            >
-              <Edit2 className="w-4 h-4" />
-              <span>Edit</span>
-            </button>
-          </div>
+
         </div>
 
         {/* Divider Line */}
@@ -405,7 +447,55 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
         </div>
       </div>
 
-      {/* 2. TOP FINANCIAL SUMMARY CARDS (3 separate, distinct horizontal cards) */}
+      {/* 2. ROLLING REPURCHASE STATUS CARD */}
+      <div className="bg-white border border-slate-200/90 rounded-2xl p-3.5 sm:p-4 shadow-2xs space-y-3">
+        {/* Top Row: Green clock icon, 'Rolling Repurchase Status' title on the left, 'Last: [Date]' on the right */}
+        <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-slate-100">
+          <div className="flex items-center gap-2">
+            <Clock className="w-4.5 h-4.5 text-emerald-600 shrink-0" />
+            <h2 className="text-xs sm:text-sm font-extrabold text-slate-900">
+              Rolling Repurchase Status
+            </h2>
+          </div>
+          <div className="text-xs font-medium text-slate-500">
+            Last: <span className="text-slate-800 font-bold">{lastPurchaseDateStr}</span>
+          </div>
+        </div>
+
+        {/* Middle Rows: Simple key-value text pairs for 'Handwash:' and 'Tissue:' with status right-aligned */}
+        <div className="space-y-2 text-xs sm:text-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-slate-600 font-semibold">Handwash:</span>
+            <span className={`font-bold ${
+              hw.status === 'overdue' ? 'text-red-600' :
+              hw.status === 'approaching' ? 'text-amber-600' :
+              hw.status === 'healthy' ? 'text-emerald-600' :
+              'text-slate-500 font-medium'
+            }`}>
+              {hw.badgeText || 'No purchase history'}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <span className="text-slate-600 font-semibold">Tissue:</span>
+            <span className={`font-bold ${
+              ts.status === 'overdue' ? 'text-red-600' :
+              ts.status === 'approaching' ? 'text-amber-600' :
+              ts.status === 'healthy' ? 'text-emerald-600' :
+              'text-slate-500 font-medium'
+            }`}>
+              {ts.badgeText || 'No purchase history'}
+            </span>
+          </div>
+        </div>
+
+        {/* Footer/Sub-text: Small text for Dispensers count at the bottom left */}
+        <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 font-medium">
+          <span>{dispensersCount} {dispensersCount === 1 ? 'Dispenser' : 'Dispensers'}</span>
+        </div>
+      </div>
+
+      {/* 3. TOP FINANCIAL SUMMARY CARDS (3 separate, distinct horizontal cards) */}
       <div className="grid grid-cols-3 gap-2">
         {/* Card 1: TOTAL SALES */}
         <div className="bg-white border border-slate-200/80 rounded-2xl p-2.5 sm:p-4 shadow-xs text-center min-w-0 space-y-0.5 sm:space-y-1">
@@ -440,26 +530,49 @@ export const CustomerDetailView: React.FC<CustomerDetailViewProps> = ({
 
       {/* 3. CUSTOMER INFORMATION SECTION (Vertical stacked layout matching reference image) */}
       <div className="bg-white border border-slate-100 rounded-3xl p-5 sm:p-6 shadow-xs transition-all duration-200">
-        <button
-          type="button"
+        <div
           onClick={() => setIsCustomerInfoExpanded(prev => !prev)}
-          className={`w-full flex items-center justify-between text-left focus:outline-none cursor-pointer group ${
+          className={`w-full flex items-center justify-between text-left cursor-pointer group ${
             isCustomerInfoExpanded ? 'mb-4 pb-3 border-b border-slate-100' : ''
           }`}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setIsCustomerInfoExpanded(prev => !prev);
+            }
+          }}
           aria-expanded={isCustomerInfoExpanded}
         >
           <h2 className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
             <Building2 className="w-4.5 h-4.5 text-emerald-600" />
             Customer Information
           </h2>
-          <div className="p-1 text-slate-400 group-hover:text-slate-600 transition-colors">
-            {isCustomerInfoExpanded ? (
-              <ChevronUp className="w-5 h-5" />
-            ) : (
-              <ChevronDown className="w-5 h-5" />
+          <div className="flex items-center gap-1">
+            {isCustomerInfoExpanded && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsEditModalOpen(true);
+                }}
+                className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                title="Edit Customer Information"
+                aria-label="Edit Customer Information"
+              >
+                <Edit2 className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+              </button>
             )}
+            <div className="p-1 text-slate-400 group-hover:text-slate-600 transition-colors">
+              {isCustomerInfoExpanded ? (
+                <ChevronUp className="w-5 h-5" />
+              ) : (
+                <ChevronDown className="w-5 h-5" />
+              )}
+            </div>
           </div>
-        </button>
+        </div>
 
         {isCustomerInfoExpanded && (
           <div className="space-y-4">

@@ -125,7 +125,7 @@ export const getCustomerLastVisitDate = (
   return latestDateStr;
 };
 
-const formatLastVisitDate = (dateStr?: string | null): string => {
+export const formatLastVisitDate = (dateStr?: string | null): string => {
   if (!dateStr) return 'No Visits';
   try {
     const d = new Date(dateStr);
@@ -140,7 +140,7 @@ const formatLastVisitDate = (dateStr?: string | null): string => {
   }
 };
 
-const getRelativeVisitTime = (visitDateStr?: string | null) => {
+export const getRelativeVisitTime = (visitDateStr?: string | null) => {
   if (!visitDateStr) {
     return { relativeStr: 'No record', daysElapsed: null, isRedAlert: false };
   }
